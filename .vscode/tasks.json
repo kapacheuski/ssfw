@@ -1,0 +1,10 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "programm-beacon",
+            "type": "shell",
+            "command": "openocd -f interface/stlink.cfg -c 'transport select hla_swd' -f target/nrf52.cfg -c 'program ${workspaceFolder}/dev/beacon/build/merged.hex verify reset; shutdown;'"
+        }
+    ]
+}

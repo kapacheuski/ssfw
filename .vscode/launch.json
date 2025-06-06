@@ -1,0 +1,29 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "nrf-connect",
+			"request": "launch",
+			"name": "Launch beacon",
+			"config": "${workspaceFolder}/dev/beacon/build/beacon",
+			"runToEntryPoint": "main"
+		},
+		{
+			"name": "Debug nRF (OpenOCD ST-Link)",
+			"type": "cortex-debug",
+			"request": "launch",
+			"servertype": "openocd",
+			"cwd": "${workspaceFolder}",
+			"executable": "${workspaceFolder}/dev/beacon/build/beacon/zephyr/zephyr.elf",
+			"device": "nrf52",
+			"configFiles": [
+				"interface/stlink.cfg",
+				"target/nrf52.cfg"
+			],
+			//"preLaunchTask": "programm-beacon",
+			"runToEntryPoint": "main",
+			"svdFile": "",
+			"showDevDebugOutput": "raw",
+		}
+	]
+}

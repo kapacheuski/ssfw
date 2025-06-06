@@ -1,0 +1,9 @@
+{
+    "nrf-connect.applications": [
+        "${workspaceFolder}/dev/beacon"
+    ],
+    "nrf-connect.debugging.bindings": {
+        "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
+        "${workspaceFolder}/dev/beacon/build": "Debug nRF (OpenOCD ST-Link)"
+    }
+}
