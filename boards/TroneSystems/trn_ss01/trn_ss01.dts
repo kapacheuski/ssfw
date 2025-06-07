@@ -1,0 +1,107 @@
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "trn_ss01-pinctrl.dtsi"
+
+/ {
+	model = "Smart Sensor";
+	compatible = "TroneSystems,trn-ss01";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console = &uart0;
+	};
+
+	zephyr,user {
+		vddp_ctrl-gpios = <&gpio1 2 0>;
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 DT_SIZE_K(48)>;
+		};
+
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0x0000c000 DT_SIZE_K(472)>;
+		};
+
+		slot1_partition: partition@82000 {
+			label = "image-1";
+			reg = <0x00082000 DT_SIZE_K(472)>;
+		};
+
+		storage_partition: partition@f8000 {
+			label = "storage";
+			reg = <0x000f8000 DT_SIZE_K(32)>;
+		};
+	};
+};
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&i2c0 {
+	stts22h@0 {
+		compatible = "st,stts22h";
+		reg = <0x0>;
+	};
+
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-names = "default";
+};
+
+&pinctrl {
+	i2c0_default: i2c0_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 1, 4)>, <NRF_PSEL(TWIM_SDA, 1, 6)>;
+		};
+	};
+
+	spi0_default: spi0_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 15)>,
+			        <NRF_PSEL(SPIM_MISO, 0, 17)>,
+			        <NRF_PSEL(SPIM_MOSI, 0, 20)>;
+		};
+	};
+
+	uart0_default: uart0_default {
+		group1 {
+			psels = <NRF_PSEL(UART_RX, 0, 3)>, <NRF_PSEL(UART_TX, 0, 2)>;
+		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+	cs-gpios = <&gpio1 0 0>;
+	pinctrl-0 = <&spi0_default>;
+	pinctrl-names = "default";
+};
+
+&uart0 {
+	status = "okay";
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+};
+
+

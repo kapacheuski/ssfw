@@ -1,5 +1,5 @@
 board:
-  name: trn-ss-01
+  name: trn_ss01
   vendor: TroneSystems
   socs:
     - name: nrf52840

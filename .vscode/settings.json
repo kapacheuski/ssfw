@@ -1,9 +1,19 @@
 {
     "nrf-connect.applications": [
-        "${workspaceFolder}/dev/beacon"
+        "${workspaceFolder}/dev/peripheral_nus"
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
         "${workspaceFolder}/dev/beacon/build": "Debug nRF (OpenOCD ST-Link)"
+    },
+    "nrf-connect.taskBindings": {
+        "build": [
+            {
+                "taskName": "build-peripheral-nus",
+                "buildConfigs": [
+                    "${workspaceFolder}/dev/peripheral_nus/build/peripheral_nus"
+                ]
+            }
+        ]
     }
 }

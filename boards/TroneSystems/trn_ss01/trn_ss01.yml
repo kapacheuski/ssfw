@@ -1,5 +1,5 @@
-identifier: trn-ss-01/nrf52840
-name: Tron Systems Smart Sensor V1
+identifier: trn_ss01/nrf52840
+name: Smart Sensor
 vendor: TroneSystems
 type: mcu
 arch: arm

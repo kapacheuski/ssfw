@@ -24,6 +24,23 @@
 			"runToEntryPoint": "main",
 			"svdFile": "",
 			"showDevDebugOutput": "raw",
+		},
+		{
+			"name": "Debug NUS",
+			"type": "cortex-debug",
+			"request": "launch",
+			"servertype": "openocd",
+			"cwd": "${workspaceFolder}",
+			"executable": "${workspaceFolder}/dev/peripheral_nus/build/peripheral_nus/zephyr/zephyr.elf",
+			"device": "nrf52",
+			"configFiles": [
+				"interface/stlink.cfg",
+				"target/nrf52.cfg"
+			],
+			"preLaunchTask": "build-peripheral-nus",
+			"runToEntryPoint": "main",
+			"svdFile": "",
+			"showDevDebugOutput": "raw",
 		}
 	]
 }

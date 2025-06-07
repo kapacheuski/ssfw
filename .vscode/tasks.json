@@ -5,6 +5,22 @@
             "label": "programm-beacon",
             "type": "shell",
             "command": "openocd -f interface/stlink.cfg -c 'transport select hla_swd' -f target/nrf52.cfg -c 'program ${workspaceFolder}/dev/beacon/build/merged.hex verify reset; shutdown;'"
+        },
+        {
+            "type": "nrf-connect-build",
+            "config": "/Users/baron/Projects/TRON/ssfw/dev/peripheral_nus/build",
+            "runCmake": false,
+            "problemMatcher": [
+                "$gcc",
+                "$cmake",
+                "$kconfig",
+                "$kconfig_syntax",
+                "$kconfig_syntax_files",
+                "$dts",
+                "$dts_syntax"
+            ],
+            "group": "build",
+            "label": "build-peripheral-nus"
         }
     ]
 }
