@@ -8,7 +8,7 @@
         },
         {
             "type": "nrf-connect-build",
-            "config": "/Users/baron/Projects/TRON/ssfw/dev/peripheral_nus/build",
+            "config": "/Users/baron/Projects/TRON/ssfw/dev/sstest/build",
             "runCmake": false,
             "problemMatcher": [
                 "$gcc",
@@ -20,7 +20,7 @@
                 "$dts_syntax"
             ],
             "group": "build",
-            "label": "build-peripheral-nus"
+            "label": "build-sstest"
         }
     ]
 }

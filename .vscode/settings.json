@@ -1,6 +1,6 @@
 {
     "nrf-connect.applications": [
-        "${workspaceFolder}/dev/peripheral_nus"
+        "${workspaceFolder}/dev/sstest"
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
@@ -15,5 +15,28 @@
                 ]
             }
         ]
-    }
+    },
+    "cSpell.words": [
+        "Croxel",
+        "dtsi",
+        "gpios",
+        "gpiote",
+        "mcuboot",
+        "MOSI",
+        "pinctrl",
+        "printk",
+        "PSEL",
+        "psels",
+        "qiaa",
+        "SPIM",
+        "sstest",
+        "stts",
+        "STTS",
+        "Trone",
+        "TWIM",
+        "uart",
+        "UART",
+        "vddp",
+        "vsnprintk"
+    ]
 }
