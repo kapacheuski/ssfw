@@ -9,6 +9,11 @@
 #include <zephyr/bluetooth/services/nus.h>
 #include <zephyr/drivers/sensor.h>
 #include <stdarg.h>
+#include <zephyr/drivers/gpio.h>
+
+#define ZEPHYR_USER_NODE DT_PATH(zephyr_user)
+const struct gpio_dt_spec vddpctrl =
+	GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, vddpctrl_gpios);
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -97,7 +102,7 @@ static int bt_nus_printf(struct bt_conn *conn, const char *fmt, ...)
 	buf[sizeof(buf) - 1] = '\0';
 
 	int total_sent = 0;
-	const int chunk_size = 20;
+	const int chunk_size = 253;
 	for (int offset = 0; offset < len; offset += chunk_size)
 	{
 		int send_len = (len - offset > chunk_size) ? chunk_size : (len - offset);
@@ -153,10 +158,12 @@ int main(void)
 		printk("STTS22H sensor ready\n");
 	}
 
+	gpio_pin_configure_dt(&vddpctrl, GPIO_OUTPUT_INACTIVE);
+	// gpio_pin_set_dt(&vddpctrl, 1);
+
 	while (true)
 	{
 		k_sleep(K_SECONDS(5));
-		bt_nus_printf(current_conn, "...\n");
 		if (stts22h && device_is_ready(stts22h))
 		{
 			struct sensor_value temp;

@@ -14,8 +14,9 @@
 	};
 
 	zephyr,user {
-		vddp_ctrl-gpios = <&gpio1 2 0>;
+		vddpctrl_gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
 	};
+
 };
 
 &flash0 {
