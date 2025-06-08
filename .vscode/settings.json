@@ -18,11 +18,15 @@
     },
     "cSpell.words": [
         "CBPRINTF",
+        "COUNTH",
         "Croxel",
         "datashee",
         "dtsi",
+        "FSYNCH",
+        "FSYNCL",
         "gpios",
         "gpiote",
+        "kdps",
         "mcuboot",
         "MOSI",
         "NRFX",
@@ -35,6 +39,8 @@
         "sstest",
         "stts",
         "STTS",
+        "TMST",
+        "TMSTVAL",
         "transceive",
         "Trone",
         "TWIM",
@@ -69,7 +75,9 @@
         "ble_nus.h": "c",
         "board.h": "c",
         "devicetree.h": "c",
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "sensor.h": "c",
+        "device.h": "c"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "enabled"
 }
