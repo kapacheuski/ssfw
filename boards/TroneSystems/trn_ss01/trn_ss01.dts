@@ -59,15 +59,11 @@
 };
 
 &i2c0 {
-	stts22h@30 {
-		compatible = "st,stts22h";
-		reg = <0x30>;
-		label = "STTS22H";
-	};
 
 	status = "okay";
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-names = "default";
+	compatible = "nordic,nrf-twi";
 };
 
 &pinctrl {

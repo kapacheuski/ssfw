@@ -38,5 +38,29 @@
         "UART",
         "vddp",
         "vsnprintk"
-    ]
+    ],
+    "files.associations": {
+        "cmath": "cpp",
+        "chrono": "cpp",
+        "numeric": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "ranges": "cpp",
+        "*.tcc": "cpp",
+        "unordered_map": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "iterator": "cpp",
+        "bitset": "cpp",
+        "*.cps": "javascript",
+        "map": "c",
+        "set": "c",
+        "unordered_set": "c",
+        "algorithm": "c",
+        "format": "c",
+        "cstdint": "c"
+    }
 }

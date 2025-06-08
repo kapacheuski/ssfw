@@ -25,11 +25,8 @@ void brd_init(void)
 
     // Initialize the board-specific hardware and peripherals here
     // This function is called during the system initialization phase
-
-    // Example: Initialize GPIOs, sensors, etc.
-    // gpio_init();
-    // sensor_init();
     gpio_pin_configure_dt(&vddpctrl, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_set_dt(&vddpctrl, 1); // Set VDDP control pin to low initially
 
     printk("Board initialized successfully.\n");
 }

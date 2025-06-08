@@ -26,7 +26,7 @@ int main(void)
 
 	while (1)
 	{
-		k_sleep(K_SECONDS(5));
+		k_sleep(K_SECONDS(1));
 		sensor_task();
 	}
 
