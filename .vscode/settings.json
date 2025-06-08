@@ -22,6 +22,8 @@
         "Croxel",
         "datashee",
         "dtsi",
+        "fargs",
+        "figsize",
         "FSYNCH",
         "FSYNCL",
         "gpios",
@@ -35,6 +37,8 @@
         "PSEL",
         "psels",
         "qiaa",
+        "relim",
+        "sharex",
         "SPIM",
         "sstest",
         "stts",
@@ -47,7 +51,9 @@
         "uart",
         "UART",
         "vddp",
-        "vsnprintk"
+        "vsnprintk",
+        "xlabel",
+        "ylabel"
     ],
     "files.associations": {
         "cmath": "cpp",

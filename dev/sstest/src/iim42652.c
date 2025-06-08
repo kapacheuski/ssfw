@@ -1,4 +1,3 @@
-
 #include "iim42652.h"
 #include <zephyr/drivers/spi.h>
 #define SPI1_NODE DT_NODELABEL(spi1)
@@ -160,16 +159,15 @@ int IIM42652_data(iim42652_data_t *iim_data)
     // assuming the data is in the format:
     // [Temp MSB, Temp LSB, Accel X MSB, Accel X LSB, Accel Y MSB, Accel Y LSB, Accel Z MSB, Accel Z LSB,
     // Gyro X MSB, Gyro X LSB, Gyro Y MSB, Gyro Y LSB, Gyro Z MSB, Gyro Z LSB]
-    uint8_t temp_msb = rx_data[0];
-    uint8_t temp_lsb = rx_data[1];
+    uint8_t temp_msb = rx_data[1];
+    uint8_t temp_lsb = rx_data[2];
     uint8_t *accel_data = rx_data + 1 + 2;    // Skip the first byte (command byte)
     uint8_t *gyro_data = rx_data + 1 + 2 + 6; // Skip the first byte (command byte) and temperature bytes
 
-    // Accelerometer data has maximum scale of 16g, so we need to convert it to mm/s^2
-    // Gyroscope data has maximum scale of 2000dps, so we need to convert it to dps
-    iim42652_instance.data_valid = true;
-    iim42652_instance.initialized = true;
-    iim_data->temp = ((int16_t)((temp_msb << 8) | temp_lsb)) / 256.0; // Convert to Celsius
+    // Convert temperature using formula: (TEMP_DATA / 132.48) + 25
+    int16_t temp_raw = (int16_t)((temp_msb << 8) | temp_lsb);
+    iim_data->temp = ((double)temp_raw / 132.48) + 25.0; // Correct temperature conversion
+
     // Process accelerometer data
     iim_data->acc[0] = (double)((int16_t)((accel_data[0] << 8) | accel_data[1])) / 2048.0; // Convert to g
     iim_data->acc[1] = (double)((int16_t)((accel_data[2] << 8) | accel_data[3])) / 2048.0; // Convert to g
