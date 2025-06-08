@@ -37,7 +37,7 @@ async def main(target_name):
 
         async def input_loop():
             while True:
-                msg = await asyncio.get_event_loop().run_in_executor(None, input, "> ")
+                msg = await asyncio.get_event_loop().run_in_executor(None, input, "---------------------------------\n")
                 if msg.lower() == "exit":
                     stop_event.set()
                     break
@@ -48,7 +48,7 @@ async def main(target_name):
             while not stop_event.is_set():
                 try:
                     data = await asyncio.wait_for(message_queue.get(), timeout=0.1)
-                    print(f"\r[{target.name}] {data.decode(errors='replace')}\n> ", end="", flush=True)
+                    print(f"{data.decode(errors='replace')}", end="", flush=True)
                 except asyncio.TimeoutError:
                     continue
 
