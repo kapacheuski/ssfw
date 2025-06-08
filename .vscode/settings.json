@@ -17,12 +17,15 @@
         ]
     },
     "cSpell.words": [
+        "CBPRINTF",
         "Croxel",
+        "datashee",
         "dtsi",
         "gpios",
         "gpiote",
         "mcuboot",
         "MOSI",
+        "NRFX",
         "pinctrl",
         "printk",
         "PSEL",
@@ -32,6 +35,7 @@
         "sstest",
         "stts",
         "STTS",
+        "transceive",
         "Trone",
         "TWIM",
         "uart",
@@ -61,6 +65,11 @@
         "unordered_set": "c",
         "algorithm": "c",
         "format": "c",
-        "cstdint": "c"
-    }
+        "cstdint": "c",
+        "ble_nus.h": "c",
+        "board.h": "c",
+        "devicetree.h": "c",
+        "kernel.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

@@ -1,18 +1,8 @@
-/*
- * Copyright (c) 2024 Croxel, Inc.
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include "board.h"
 #include "ble_nus.h"
 #include "sensors.h"
 #include <zephyr/kernel.h>
-
 // Externs from main.c
-extern void brd_init(void);
-extern void sensor_init(void);
-extern int ble_init(void);
 
 int main(void)
 {
