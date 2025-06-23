@@ -47,8 +47,6 @@ uint8_t IIM42652_read_register(uint8_t reg)
     int rc = spi_transceive(spi1, &spi_cfg, &tx_set, &rx_set);
     if (rc < 0)
     {
-        printk("SPI transfer failed: %d\n", rc);
-        bt_nus_printf("SPI transfer failed: %d\n", rc);
         return 0; // Return an error value
     }
     return rx_buf[1]; // Return the read value

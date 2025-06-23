@@ -13,41 +13,51 @@ NUS_TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  # Notify
 HIST_LEN = 200
 temp_data = deque(maxlen=HIST_LEN)
 imu_temp_data = deque(maxlen=HIST_LEN)
+voltage_data = deque(maxlen=HIST_LEN)
 acc_data = [deque(maxlen=HIST_LEN) for _ in range(3)]
 gyro_data = [deque(maxlen=HIST_LEN) for _ in range(3)]
 data_lock = threading.Lock()
 
 def init_plots():
-    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
+    # Temperature and IMU temp
     l_temp, = axs[0].plot([], [], label="temperature")
     l_imu_temp, = axs[0].plot([], [], label="imu_temp")
     axs[0].legend()
     axs[0].set_ylabel("Temp (C)")
     axs[0].set_title("Temperature and IMU Temp")
-    l_acc = [axs[1].plot([], [], label=lbl)[0] for lbl in ['acc_x', 'acc_y', 'acc_z']]
+    # Voltage
+    l_voltage, = axs[1].plot([], [], label="voltage", color="orange")
     axs[1].legend()
-    axs[1].set_ylabel("Acceleration (g)")
-    axs[1].set_title("Accelerometer")
-    l_gyro = [axs[2].plot([], [], label=lbl)[0] for lbl in ['gyro_x', 'gyro_y', 'gyro_z']]
+    axs[1].set_ylabel("Voltage (V)")
+    axs[1].set_title("Voltage")
+    # Acceleration
+    l_acc = [axs[2].plot([], [], label=lbl)[0] for lbl in ['acc_x', 'acc_y', 'acc_z']]
     axs[2].legend()
-    axs[2].set_ylabel("Gyro (dps)")
-    axs[2].set_title("Gyroscope")
-    axs[2].set_xlabel("Samples")
+    axs[2].set_ylabel("Acceleration (g)")
+    axs[2].set_title("Accelerometer")
+    # Gyroscope
+    l_gyro = [axs[3].plot([], [], label=lbl)[0] for lbl in ['gyro_x', 'gyro_y', 'gyro_z']]
+    axs[3].legend()
+    axs[3].set_ylabel("Gyro (dps)")
+    axs[3].set_title("Gyroscope")
+    axs[3].set_xlabel("Samples")
     plt.tight_layout()
-    return fig, axs, l_temp, l_imu_temp, l_acc, l_gyro
+    return fig, axs, l_temp, l_imu_temp, l_voltage, l_acc, l_gyro
 
-def update_plots(frame, l_temp, l_imu_temp, l_acc, l_gyro):
+def update_plots(frame, l_temp, l_imu_temp, l_voltage, l_acc, l_gyro):
     with data_lock:
         x = range(len(temp_data))
         l_temp.set_data(x, list(temp_data))
         l_imu_temp.set_data(x, list(imu_temp_data))
+        l_voltage.set_data(x, list(voltage_data))
         for i in range(3):
             l_acc[i].set_data(x, list(acc_data[i]))
             l_gyro[i].set_data(x, list(gyro_data[i]))
         for ax in l_temp.axes.figure.axes:
             ax.relim()
             ax.autoscale_view()
-    return [l_temp, l_imu_temp] + l_acc + l_gyro
+    return [l_temp, l_imu_temp, l_voltage] + l_acc + l_gyro
 
 async def ble_task(target_name):
     print("Scanning for BLE devices...")
@@ -67,12 +77,13 @@ async def ble_task(target_name):
             try:
                 msg = data.decode(errors='replace')
                 js = json.loads(msg)
-               # print(f"Received data: {js}")  # Console output now works in real time
                 with data_lock:
                     if "temperature" in js:
                         temp_data.append(js.get("temperature", 0))
                     if "imu_temp" in js:
                         imu_temp_data.append(js.get("imu_temp", 0))
+                    if "voltage" in js:
+                        voltage_data.append(js.get("voltage", 0))
                     if "acc" in js:
                         for i in range(3):
                             acc_data[i].append(js["acc"][i])
@@ -99,6 +110,6 @@ if __name__ == "__main__":
     ble_thread.start()
 
     # Start plotting in main thread
-    fig, axs, l_temp, l_imu_temp, l_acc, l_gyro = init_plots()
-    ani = FuncAnimation(fig, update_plots, fargs=(l_temp, l_imu_temp, l_acc, l_gyro), interval=100)
+    fig, axs, l_temp, l_imu_temp, l_voltage, l_acc, l_gyro = init_plots()
+    ani = FuncAnimation(fig, update_plots, fargs=(l_temp, l_imu_temp, l_voltage, l_acc, l_gyro), interval=100)
     plt.show()
