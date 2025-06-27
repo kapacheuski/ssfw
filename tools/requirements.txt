@@ -1,0 +1,8 @@
+PyQt5
+PyQtWebEngine
+matplotlib
+requests
+numpy
+pandas
+bleak
+pyserial
