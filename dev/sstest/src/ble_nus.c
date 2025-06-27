@@ -2,6 +2,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/services/nus.h>
+#include <zephyr/sys/printk.h>
+#include <zephyr/sys/util.h>
 #include <stdarg.h>
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
@@ -36,6 +38,9 @@ static struct bt_conn_cb conn_callbacks = {
     .disconnected = disconnected,
 };
 
+static void adv_restart(struct k_work *work);
+static struct k_work_delayable adv_restart_work;
+
 struct bt_conn *ble_connection(void)
 {
     return current_conn;
@@ -66,6 +71,9 @@ int ble_init()
         printk("Failed to start advertising: %d\n", err);
         return err;
     }
+
+    k_work_init_delayable(&adv_restart_work, adv_restart);
+
     return 0;
 }
 void notif_enabled(bool enabled, void *ctx)
@@ -100,6 +108,26 @@ void connected(struct bt_conn *conn, uint8_t err)
     printk("Central connected\n");
 }
 
+static void adv_restart(struct k_work *work)
+{
+    int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+    if (err == -EADDRINUSE)
+    {
+        printk("Advertising busy, retrying...\n");
+        k_work_schedule(&adv_restart_work, K_MSEC(300));
+    }
+    else if (err)
+    {
+        printk("Failed to restart advertising: %d\n", err);
+        // Optionally, retry on other errors as well
+        k_work_schedule(&adv_restart_work, K_MSEC(1000));
+    }
+    else
+    {
+        printk("Advertising restarted\n");
+    }
+}
+
 void disconnected(struct bt_conn *conn, uint8_t reason)
 {
     if (current_conn)
@@ -108,6 +136,9 @@ void disconnected(struct bt_conn *conn, uint8_t reason)
         current_conn = NULL;
     }
     printk("Central disconnected (reason %u)\n", reason);
+
+    // Schedule advertising restart after a short delay
+    k_work_schedule(&adv_restart_work, K_MSEC(300));
 }
 
 // Printf-like function to send a formatted message over Bluetooth NUS
