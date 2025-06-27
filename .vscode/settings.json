@@ -83,7 +83,8 @@
         "devicetree.h": "c",
         "kernel.h": "c",
         "sensor.h": "c",
-        "device.h": "c"
+        "device.h": "c",
+        "nrf_saadc.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
