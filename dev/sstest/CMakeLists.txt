@@ -4,6 +4,7 @@ project(peripheral_nus)
 
 target_sources(app PRIVATE
         src/board.c
+        src/adc.c
         src/ble_nus.c
         src/sensors.c
         src/stts2004.c

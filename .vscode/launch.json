@@ -24,6 +24,24 @@
 			//"runToEntryPoint": "main",
 			"svdFile": "",
 			"showDevDebugOutput": "raw",
+		},
+		//debug ss_mqtt
+		{
+			"name": "Debug ss_mqtt",
+			"type": "cortex-debug",
+			"request": "launch",
+			"servertype": "openocd",
+			"cwd": "${workspaceFolder}",
+			"executable": "${workspaceFolder}/dev/ss_mqtt/build/ss_mqtt/zephyr/zephyr.elf",
+			"device": "nrf52",
+			"configFiles": [
+				"interface/stlink.cfg",
+				"target/nrf52.cfg"
+			],
+			"preLaunchTask": "build-ss_mqtt",
+			//"runToEntryPoint": "main",
+			"svdFile": "",
+			"showDevDebugOutput": "raw",
 		}
 	]
 }

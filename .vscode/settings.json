@@ -1,6 +1,7 @@
 {
     "nrf-connect.applications": [
-        "${workspaceFolder}/dev/sstest"
+        "${workspaceFolder}/dev/sstest",
+        "${workspaceFolder}/dev/ss_mqtt"
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
@@ -17,6 +18,7 @@
         ]
     },
     "cSpell.words": [
+        "bcaddr",
         "CBPRINTF",
         "COUNTH",
         "Croxel",
@@ -28,17 +30,24 @@
         "FSYNCL",
         "gpios",
         "gpiote",
+        "grandcentrix",
+        "GWINFO",
         "kdps",
         "mcuboot",
         "MOSI",
+        "mqtt",
+        "MQTT",
         "NRFX",
         "pinctrl",
         "printk",
         "PSEL",
         "psels",
+        "pubdata",
         "qiaa",
         "relim",
+        "SEARCHGW",
         "sharex",
+        "snprintk",
         "SPIM",
         "sstest",
         "stts",

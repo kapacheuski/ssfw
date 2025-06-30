@@ -21,6 +21,23 @@
             ],
             "group": "build",
             "label": "build-sstest"
+        },
+        //add build for ss_mqtt-build
+        {
+            "type": "nrf-connect-build",
+            "config": "/Users/baron/Projects/TRON/ssfw/dev/ss_mqtt/build",
+            "runCmake": false,
+            "problemMatcher": [
+                "$gcc",
+                "$cmake",
+                "$kconfig",
+                "$kconfig_syntax",
+                "$kconfig_syntax_files",
+                "$dts",
+                "$dts_syntax"
+            ],
+            "group": "build",
+            "label": "build-ss_mqtt"
         }
     ]
 }
