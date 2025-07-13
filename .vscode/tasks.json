@@ -22,10 +22,10 @@
             "group": "build",
             "label": "build-sstest"
         },
-        //add build for ss_mqtt-build
+        // add build for coap_client
         {
             "type": "nrf-connect-build",
-            "config": "/Users/baron/Projects/TRON/ssfw/dev/ss_mqtt/build",
+            "config": "${workspaceFolder}/dev/coap_client/build",
             "runCmake": false,
             "problemMatcher": [
                 "$gcc",
@@ -37,7 +37,7 @@
                 "$dts_syntax"
             ],
             "group": "build",
-            "label": "build-ss_mqtt"
+            "label": "build-coap_client"
         }
     ]
 }

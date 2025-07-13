@@ -1,7 +1,10 @@
 {
     "nrf-connect.applications": [
         "${workspaceFolder}/dev/sstest",
-        "${workspaceFolder}/dev/ss_mqtt"
+        "${workspaceFolder}/ncs-zigbee/samples/template",
+        "${workspaceFolder}/dev/coprocessor",
+        "${workspaceFolder}/dev/ot_cli",
+        "${workspaceFolder}/dev/coap_client"
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
@@ -20,6 +23,7 @@
     "cSpell.words": [
         "bcaddr",
         "CBPRINTF",
+        "chaged",
         "COUNTH",
         "Croxel",
         "datashee",
@@ -40,6 +44,7 @@
         "NRFX",
         "pinctrl",
         "printk",
+        "provisionig",
         "PSEL",
         "psels",
         "pubdata",
@@ -61,8 +66,11 @@
         "UART",
         "vddp",
         "vsnprintk",
+        "workqueue",
+        "WORKQUEUE",
         "xlabel",
-        "ylabel"
+        "ylabel",
+        "ZIGBEE"
     ],
     "files.associations": {
         "cmath": "cpp",
