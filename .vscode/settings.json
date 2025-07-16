@@ -4,7 +4,8 @@
         "${workspaceFolder}/ncs-zigbee/samples/template",
         "${workspaceFolder}/dev/coprocessor",
         "${workspaceFolder}/dev/ot_cli",
-        "${workspaceFolder}/dev/coap_client"
+        "${workspaceFolder}/dev/coap_client",
+        "${workspaceFolder}/dev/dns_resolve"
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
@@ -27,6 +28,8 @@
         "COUNTH",
         "Croxel",
         "datashee",
+        "DHCPV",
+        "dnsmasq",
         "dtsi",
         "fargs",
         "figsize",
@@ -37,11 +40,18 @@
         "grandcentrix",
         "GWINFO",
         "kdps",
+        "LLMNR",
+        "MBEDTLS",
+        "MCAST",
         "mcuboot",
+        "MDNS",
+        "MGMT",
         "MOSI",
         "mqtt",
         "MQTT",
+        "NETWORKKEY",
         "NRFX",
+        "OPENTHREAD",
         "pinctrl",
         "printk",
         "provisionig",
@@ -70,7 +80,8 @@
         "WORKQUEUE",
         "xlabel",
         "ylabel",
-        "ZIGBEE"
+        "ZIGBEE",
+        "ZVFS"
     ],
     "files.associations": {
         "cmath": "cpp",

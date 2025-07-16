@@ -28,7 +28,7 @@ LOG_MODULE_REGISTER(coap_client, CONFIG_COAP_CLIENT_LOG_LEVEL);
 #define COMMAND_REQUEST_UNICAST 'u'
 #define COMMAND_REQUEST_MULTICAST 'm'
 #define COMMAND_REQUEST_PROVISIONING 'p'
-#define COMMAND_REQUEST_IPV4 'e'
+#define COMMAND_REQUEST_TIME 't'
 
 static void on_nus_received(struct bt_conn *conn, const uint8_t *const data, uint16_t len)
 {
@@ -48,7 +48,7 @@ static void on_nus_received(struct bt_conn *conn, const uint8_t *const data, uin
 		coap_client_send_provisioning_request();
 		break;
 
-	case COMMAND_REQUEST_IPV4:
+	case COMMAND_REQUEST_TIME:
 	{
 		coap_client_get_time();
 	}

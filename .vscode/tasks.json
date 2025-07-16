@@ -38,6 +38,22 @@
             ],
             "group": "build",
             "label": "build-coap_client"
+        },
+        {
+            "type": "nrf-connect-build",
+            "config": "${workspaceFolder}/dev/dns_resolve/build",
+            "runCmake": false,
+            "problemMatcher": [
+                "$gcc",
+                "$cmake",
+                "$kconfig",
+                "$kconfig_syntax",
+                "$kconfig_syntax_files",
+                "$dts",
+                "$dts_syntax"
+            ],
+            "group": "build",
+            "label": "build-dns_resolve"
         }
     ]
 }

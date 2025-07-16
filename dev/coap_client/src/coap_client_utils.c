@@ -55,14 +55,13 @@ static struct sockaddr_in6 multicast_local_addr = {
 	.sin6_addr.s6_addr = {0xff, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 						  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
 	.sin6_scope_id = 0U};
-// Send request to fd15:7938:9154:b17:0:ff:fe00:fc11
-
+// Send request to fd15:7938:9154:b17:0:ff:fe00:fc10
 static struct sockaddr_in6 coap_server_addr = {
 	.sin6_family = AF_INET6,
 	.sin6_port = htons(COAP_PORT),
 	.sin6_addr.s6_addr = {
 		0xfd, 0x15, 0x79, 0x38, 0x91, 0x54, 0x0b, 0x17,
-		0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xfc, 0x11},
+		0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xfc, 0x10},
 	.sin6_scope_id = 0U};
 /* Variable for storing server address acquiring in provisioning handshake */
 static char unique_local_addr_str[INET6_ADDRSTRLEN];
@@ -203,7 +202,8 @@ static int on_time_reply(const struct coap_packet *response,
 	str[payload_size] = '\0'; // Null-terminate the string
 							  //	bt_nus_printf("Payload:%s", str);
 
-	// 	LOG_INF("Received peer address: %s", unique_local_addr_str);
+	LOG_INF("Received peer address: %s", unique_local_addr_str);
+	bt_nus_printf("Received peer address: %s\nPayload:%s\n", unique_local_addr_str, str);
 
 exit:
 	if (IS_ENABLED(CONFIG_OPENTHREAD_MTD_SED))
@@ -292,7 +292,7 @@ static void coap_get_time(struct k_work *item)
 		bt_nus_printf("Failed to send CoAP request: %d", ret);
 		return;
 	};
-	bt_nus_printf("Request sended !");
+	bt_nus_printf("Request sended !\n");
 }
 
 static void toggle_minimal_sleepy_end_device(struct k_work *item)

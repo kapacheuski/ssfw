@@ -54,6 +54,10 @@ static const struct bt_data sd[] = {
 static struct k_work on_connect_work;
 static struct k_work on_disconnect_work;
 
+// Add a work item for BLE NUS printf
+static struct k_work ble_printf_work;
+static char ble_printf_buffer[512];
+
 static struct bt_conn *current_conn;
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -136,6 +140,37 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 	LOG_INF("Pairing failed conn: %s, reason %d", addr, reason);
 }
 
+// Work handler for BLE printf
+static void ble_printf_work_handler(struct k_work *item)
+{
+	ARG_UNUSED(item);
+
+	struct bt_conn *conn = current_conn;
+	if (!conn)
+	{
+		return;
+	}
+
+	int len = strlen(ble_printf_buffer);
+	if (len <= 0)
+	{
+		return;
+	}
+
+	const int chunk_size = 253;
+	for (int offset = 0; offset < len; offset += chunk_size)
+	{
+		int send_len = (len - offset > chunk_size) ? chunk_size : (len - offset);
+		int rc = bt_nus_send(conn, &ble_printf_buffer[offset], send_len);
+		if (rc < 0)
+		{
+			LOG_ERR("BLE NUS send failed: %d", rc);
+			break;
+		}
+		// Small delay between chunks to avoid overwhelming the BLE stack
+		k_sleep(K_MSEC(10));
+	}
+}
 int ble_utils_init(struct bt_nus_cb *nus_clbs, ble_connection_cb_t on_connect,
 				   ble_disconnection_cb_t on_disconnect)
 {
@@ -192,41 +227,36 @@ int ble_utils_init(struct bt_nus_cb *nus_clbs, ble_connection_cb_t on_connect,
 		goto end;
 	}
 
+	// Initialize the BLE printf work item
+	k_work_init(&ble_printf_work, ble_printf_work_handler);
+
 end:
 	return ret;
 }
-// Printf-like function to send a formatted message over Bluetooth NUS
+
+// Modified bt_nus_printf to use work queue
 int bt_nus_printf(const char *fmt, ...)
 {
-	struct bt_conn *conn = current_conn;
-	if (!conn)
+	if (!current_conn)
 	{
 		return -ENOTCONN;
 	}
-	char buf[512];
+
 	va_list args;
 	va_start(args, fmt);
-	int len = vsnprintk(buf, sizeof(buf), fmt, args);
+	int len = vsnprintk(ble_printf_buffer, sizeof(ble_printf_buffer), fmt, args);
 	va_end(args);
 
 	if (len < 0)
 	{
 		return len;
 	}
-	// Ensure null-termination for safety, though bt_nus_send uses length
-	buf[sizeof(buf) - 1] = '\0';
 
-	int total_sent = 0;
-	const int chunk_size = 253;
-	for (int offset = 0; offset < len; offset += chunk_size)
-	{
-		int send_len = (len - offset > chunk_size) ? chunk_size : (len - offset);
-		int rc = bt_nus_send(conn, &buf[offset], send_len);
-		if (rc < 0)
-		{
-			return rc;
-		}
-		total_sent += send_len;
-	}
-	return total_sent;
+	// Ensure null-termination
+	ble_printf_buffer[sizeof(ble_printf_buffer) - 1] = '\0';
+
+	// Submit work to send the message
+	k_work_submit(&ble_printf_work);
+
+	return len;
 }
