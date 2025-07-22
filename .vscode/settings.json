@@ -52,6 +52,7 @@
         "NETWORKKEY",
         "NRFX",
         "OPENTHREAD",
+        "PANID",
         "pinctrl",
         "printk",
         "provisionig",

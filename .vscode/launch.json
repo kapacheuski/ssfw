@@ -38,25 +38,23 @@
 				"interface/stlink.cfg",
 				"target/nrf52.cfg"
 			],
-			"preLaunchTask": "build-coap_client",
+			//"preLaunchTask": "build-coap_client",
 			//"runToEntryPoint": "main",
 			"svdFile": "",
 			"showDevDebugOutput": "raw",
 		},
 		{
-			"name": "Debug dns_resolve",
+			"name": "Debug cc_ex",
 			"type": "cortex-debug",
 			"request": "launch",
 			"servertype": "openocd",
 			"cwd": "${workspaceFolder}",
-			"executable": "${workspaceFolder}/dev/dns_resolve/build/dns_resolve/zephyr/zephyr.elf",
+			"executable": "${workspaceFolder}/dev/coap_client_ext/build/coap_client_ext/zephyr/zephyr.elf",
 			"device": "nrf52",
 			"configFiles": [
 				"interface/stlink.cfg",
 				"target/nrf52.cfg"
 			],
-			"preLaunchTask": "build-dns_resolve",
-			//"runToEntryPoint": "main",
 			"svdFile": "",
 			"showDevDebugOutput": "raw",
 		},

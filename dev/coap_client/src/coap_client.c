@@ -12,6 +12,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/net/coap.h>
 #include "coap_client_utils.h"
+#include "dns_utils.h"
 
 #if CONFIG_BT_NUS
 #include "ble_utils.h"
@@ -29,6 +30,9 @@ LOG_MODULE_REGISTER(coap_client, CONFIG_COAP_CLIENT_LOG_LEVEL);
 #define COMMAND_REQUEST_MULTICAST 'm'
 #define COMMAND_REQUEST_PROVISIONING 'p'
 #define COMMAND_REQUEST_TIME 't'
+#define COMMAND_REQUEST_DNS 'd'
+
+#define CONFIG_COAP_SAMPLE_SERVER_HOSTNAME "srv-ss.vibromatika.by"
 
 static void on_nus_received(struct bt_conn *conn, const uint8_t *const data, uint16_t len)
 {
@@ -51,6 +55,13 @@ static void on_nus_received(struct bt_conn *conn, const uint8_t *const data, uin
 	case COMMAND_REQUEST_TIME:
 	{
 		coap_client_get_time();
+	}
+	break;
+	case COMMAND_REQUEST_DNS:
+	{
+		// Example hostname, replace with actual server hostname
+		const char *hostname = CONFIG_COAP_SAMPLE_SERVER_HOSTNAME;
+		coap_client_resolve_hostname(hostname);
 	}
 
 	break;
@@ -136,6 +147,8 @@ static void on_button_changed(uint32_t button_state, uint32_t has_changed)
 	}
 }
 
+// DNS resolution callback
+
 int main(void)
 {
 	int ret;
@@ -178,5 +191,10 @@ int main(void)
 
 	coap_client_utils_init(on_ot_connect, on_ot_disconnect, on_mtd_mode_toggle);
 
+	// Initialize DNS utilities
+	dns_utils_init();
+
 	return 0;
 }
+
+// Function to resolve hostname
