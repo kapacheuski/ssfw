@@ -63,6 +63,7 @@
         "PSEL",
         "psels",
         "PSKC",
+        "PSKD",
         "pubdata",
         "qiaa",
         "relim",
@@ -70,6 +71,7 @@
         "RINGBUF",
         "SEARCHGW",
         "sharex",
+        "SLAAC",
         "snprintk",
         "SPIM",
         "sstest",
@@ -87,6 +89,7 @@
         "workqueue",
         "WORKQUEUE",
         "xlabel",
+        "XPANID",
         "ylabel",
         "ZIGBEE",
         "ZVFS"
