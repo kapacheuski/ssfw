@@ -42,6 +42,10 @@
 			//"runToEntryPoint": "main",
 			"svdFile": "",
 			"showDevDebugOutput": "raw",
+			"postLaunchCommands": [
+				"-enable-pretty-printing",
+				"set output-radix 16"
+			]
 		},
 		{
 			"name": "Debug cc_ex",

@@ -10,6 +10,7 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/sys/ring_buffer.h>
 
 #include "ble_utils.h"
 
@@ -17,6 +18,43 @@ LOG_MODULE_REGISTER(ble_utils, CONFIG_BLE_UTILS_LOG_LEVEL);
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+
+// Ring buffer configuration
+#ifndef CONFIG_BLE_MSG_RING_BUF_SIZE
+#define BLE_MSG_RING_BUF_SIZE 2048
+#else
+#define BLE_MSG_RING_BUF_SIZE CONFIG_BLE_MSG_RING_BUF_SIZE
+#endif
+
+#ifndef CONFIG_BLE_MSG_MAX_SIZE
+#define BLE_MSG_MAX_SIZE 512
+#else
+#define BLE_MSG_MAX_SIZE CONFIG_BLE_MSG_MAX_SIZE
+#endif
+
+#ifndef CONFIG_BLE_THREAD_STACK_SIZE
+#define BLE_THREAD_STACK_SIZE 1024
+#else
+#define BLE_THREAD_STACK_SIZE CONFIG_BLE_THREAD_STACK_SIZE
+#endif
+
+#ifndef CONFIG_BLE_THREAD_PRIORITY
+#define BLE_THREAD_PRIORITY 5
+#else
+#define BLE_THREAD_PRIORITY CONFIG_BLE_THREAD_PRIORITY
+#endif
+
+// Ring buffer for BLE messages
+static uint8_t ble_msg_ring_buf_data[BLE_MSG_RING_BUF_SIZE];
+static struct ring_buf ble_msg_ring_buf;
+
+// Thread for handling BLE messages
+static K_THREAD_STACK_DEFINE(ble_thread_stack, BLE_THREAD_STACK_SIZE);
+static struct k_thread ble_thread_data;
+static k_tid_t ble_thread_tid;
+
+// Semaphore to signal new messages in ring buffer
+static K_SEM_DEFINE(ble_msg_sem, 0, 1);
 
 static void connected(struct bt_conn *conn, uint8_t err);
 static void disconnected(struct bt_conn *conn, uint8_t reason);
@@ -54,10 +92,6 @@ static const struct bt_data sd[] = {
 static struct k_work on_connect_work;
 static struct k_work on_disconnect_work;
 
-// Add a work item for BLE NUS printf
-static struct k_work ble_printf_work;
-static char ble_printf_buffer[512];
-
 static struct bt_conn *current_conn;
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -82,6 +116,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	{
 		bt_conn_unref(current_conn);
 		current_conn = NULL;
+
+		// Clear any pending messages in the ring buffer when disconnected
+		ble_utils_clear_ring_buffer();
 
 		k_work_submit(&on_disconnect_work);
 	}
@@ -140,37 +177,80 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 	LOG_INF("Pairing failed conn: %s, reason %d", addr, reason);
 }
 
-// Work handler for BLE printf
-static void ble_printf_work_handler(struct k_work *item)
+// BLE message sending thread
+static void ble_thread_handler(void *arg1, void *arg2, void *arg3)
 {
-	ARG_UNUSED(item);
+	ARG_UNUSED(arg1);
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
 
-	struct bt_conn *conn = current_conn;
-	if (!conn)
-	{
-		return;
-	}
+	uint8_t message_buffer[BLE_MSG_MAX_SIZE];
+	uint16_t message_len;
 
-	int len = strlen(ble_printf_buffer);
-	if (len <= 0)
-	{
-		return;
-	}
+	LOG_INF("BLE message thread started");
 
-	const int chunk_size = 253;
-	for (int offset = 0; offset < len; offset += chunk_size)
+	while (1)
 	{
-		int send_len = (len - offset > chunk_size) ? chunk_size : (len - offset);
-		int rc = bt_nus_send(conn, &ble_printf_buffer[offset], send_len);
-		if (rc < 0)
+		// Wait for semaphore indicating new message
+		k_sem_take(&ble_msg_sem, K_FOREVER);
+
+		// Process all messages in the ring buffer
+		while (ring_buf_size_get(&ble_msg_ring_buf) > 0)
 		{
-			LOG_ERR("BLE NUS send failed: %d", rc);
-			break;
+			struct bt_conn *conn = current_conn;
+			if (!conn)
+			{
+				// No connection, drain the ring buffer
+				ring_buf_reset(&ble_msg_ring_buf);
+				break;
+			}
+
+			// Get message length (first 2 bytes)
+			if (ring_buf_get(&ble_msg_ring_buf, (uint8_t *)&message_len, sizeof(message_len)) != sizeof(message_len))
+			{
+				LOG_ERR("Failed to read message length from ring buffer");
+				break;
+			}
+
+			// Validate message length
+			if (message_len == 0 || message_len > BLE_MSG_MAX_SIZE)
+			{
+				LOG_ERR("Invalid message length: %d", message_len);
+				break;
+			}
+
+			// Get message data
+			if (ring_buf_get(&ble_msg_ring_buf, message_buffer, message_len) != message_len)
+			{
+				LOG_ERR("Failed to read message data from ring buffer");
+				break;
+			}
+
+			// Send message in chunks
+			const int chunk_size = 253;
+			for (int offset = 0; offset < message_len; offset += chunk_size)
+			{
+				int send_len = (message_len - offset > chunk_size) ? chunk_size : (message_len - offset);
+				int rc = bt_nus_send(conn, &message_buffer[offset], send_len);
+				if (rc < 0)
+				{
+					LOG_ERR("BLE NUS send failed: %d", rc);
+					break;
+				}
+				// Small delay between chunks to avoid overwhelming the BLE stack
+				k_sleep(K_MSEC(10));
+			}
 		}
-		// Small delay between chunks to avoid overwhelming the BLE stack
-		k_sleep(K_MSEC(10));
 	}
 }
+
+// // Work handler for BLE printf (deprecated - keeping for compatibility)
+// static void ble_printf_work_handler(struct k_work *item)
+// {
+// 	ARG_UNUSED(item);
+// 	// This function is now deprecated as we use the thread-based approach
+// 	LOG_WRN("Deprecated work handler called");
+// }
 int ble_utils_init(struct bt_nus_cb *nus_clbs, ble_connection_cb_t on_connect,
 				   ble_disconnection_cb_t on_disconnect)
 {
@@ -227,14 +307,30 @@ int ble_utils_init(struct bt_nus_cb *nus_clbs, ble_connection_cb_t on_connect,
 		goto end;
 	}
 
-	// Initialize the BLE printf work item
-	k_work_init(&ble_printf_work, ble_printf_work_handler);
+	// Initialize the ring buffer for BLE messages
+	ring_buf_init(&ble_msg_ring_buf, sizeof(ble_msg_ring_buf_data), ble_msg_ring_buf_data);
+
+	// Create and start the BLE message handling thread
+	ble_thread_tid = k_thread_create(&ble_thread_data, ble_thread_stack,
+									 K_THREAD_STACK_SIZEOF(ble_thread_stack),
+									 ble_thread_handler, NULL, NULL, NULL,
+									 BLE_THREAD_PRIORITY, 0, K_NO_WAIT);
+
+	if (!ble_thread_tid)
+	{
+		LOG_ERR("Failed to create BLE message thread");
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	k_thread_name_set(ble_thread_tid, "ble_msg_thread");
+	LOG_INF("BLE message thread created successfully");
 
 end:
 	return ret;
 }
 
-// Modified bt_nus_printf to use work queue
+// Modified bt_nus_printf to use ring buffer and thread
 int bt_nus_printf(const char *fmt, ...)
 {
 	if (!current_conn)
@@ -242,9 +338,10 @@ int bt_nus_printf(const char *fmt, ...)
 		return -ENOTCONN;
 	}
 
+	char message_buffer[BLE_MSG_MAX_SIZE];
 	va_list args;
 	va_start(args, fmt);
-	int len = vsnprintk(ble_printf_buffer, sizeof(ble_printf_buffer), fmt, args);
+	int len = vsnprintk(message_buffer, sizeof(message_buffer), fmt, args);
 	va_end(args);
 
 	if (len < 0)
@@ -253,10 +350,112 @@ int bt_nus_printf(const char *fmt, ...)
 	}
 
 	// Ensure null-termination
-	ble_printf_buffer[sizeof(ble_printf_buffer) - 1] = '\0';
+	message_buffer[sizeof(message_buffer) - 1] = '\0';
 
-	// Submit work to send the message
-	k_work_submit(&ble_printf_work);
+	// Adjust length if truncated
+	if (len >= sizeof(message_buffer))
+	{
+		len = sizeof(message_buffer) - 1;
+	}
+
+	return bt_nus_printf_buffer(message_buffer, len);
+}
+
+// ISR-safe version that can be called from any context
+int bt_nus_printf_buffer(const char *buffer, size_t len)
+{
+	if (!current_conn)
+	{
+		return -ENOTCONN;
+	}
+
+	if (!buffer || len == 0)
+	{
+		return -EINVAL;
+	}
+
+	// Limit length to our maximum
+	if (len > BLE_MSG_MAX_SIZE - 1)
+	{
+		len = BLE_MSG_MAX_SIZE - 1;
+	}
+
+	// Check if we're in ISR context
+	bool in_isr = k_is_in_isr();
+
+	// Check if ring buffer has enough space (message length + 2 bytes for length header)
+	uint32_t space_needed = len + sizeof(uint16_t);
+	if (ring_buf_space_get(&ble_msg_ring_buf) < space_needed)
+	{
+		if (!in_isr)
+		{
+			LOG_WRN("Ring buffer full, dropping message");
+		}
+		return -ENOMEM;
+	}
+
+	// Add message length header to ring buffer
+	uint16_t msg_len = (uint16_t)len;
+	if (ring_buf_put(&ble_msg_ring_buf, (uint8_t *)&msg_len, sizeof(msg_len)) != sizeof(msg_len))
+	{
+		if (!in_isr)
+		{
+			LOG_ERR("Failed to add message length to ring buffer");
+		}
+		return -ENOMEM;
+	}
+
+	// Add message data to ring buffer
+	if (ring_buf_put(&ble_msg_ring_buf, (uint8_t *)buffer, len) != len)
+	{
+		if (!in_isr)
+		{
+			LOG_ERR("Failed to add message data to ring buffer");
+		}
+		return -ENOMEM;
+	}
+
+	// Signal the thread that a new message is available
+	// k_sem_give is ISR-safe in Zephyr
+	k_sem_give(&ble_msg_sem);
 
 	return len;
+}
+
+// Ultra-safe printf for callback contexts
+int bt_nus_printf_safe(const char *msg)
+{
+	if (!msg)
+	{
+		return -EINVAL;
+	}
+
+	size_t len = strlen(msg);
+	return bt_nus_printf_buffer(msg, len);
+}
+
+// Get ring buffer statistics for debugging
+void ble_utils_get_ring_buffer_stats(uint32_t *used_bytes, uint32_t *free_bytes, uint32_t *total_bytes)
+{
+	if (used_bytes)
+	{
+		*used_bytes = ring_buf_size_get(&ble_msg_ring_buf);
+	}
+
+	if (free_bytes)
+	{
+		*free_bytes = ring_buf_space_get(&ble_msg_ring_buf);
+	}
+
+	if (total_bytes)
+	{
+		*total_bytes = BLE_MSG_RING_BUF_SIZE;
+	}
+}
+
+// Clear the ring buffer (flush all pending messages)
+void ble_utils_clear_ring_buffer(void)
+{
+	ring_buf_reset(&ble_msg_ring_buf);
+	LOG_INF("Ring buffer cleared");
 }

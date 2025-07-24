@@ -57,6 +57,12 @@ void coap_client_send_provisioning_request(void);
 
 void coap_client_get_time(void);
 
+/** @brief Request time from a specific address.
+ *
+ * @param[in] server_addr The IPv6 address to request time from
+ */
+void coap_client_get_time_from_address(const struct sockaddr_in6 *server_addr);
+
 /** @brief Toggle SED to MED and MED to SED modes.
  *
  * @note Active when the device is working as Minimal Thread Device.

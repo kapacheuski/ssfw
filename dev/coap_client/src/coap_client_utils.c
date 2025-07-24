@@ -25,7 +25,7 @@ LOG_MODULE_REGISTER(coap_client_utils, CONFIG_COAP_CLIENT_UTILS_LOG_LEVEL);
 
 static uint32_t poll_period;
 
-static bool is_connected;
+bool thread_is_connected;
 
 #define COAP_CLIENT_WORKQ_STACK_SIZE 2048
 #define COAP_CLIENT_WORKQ_PRIORITY 5
@@ -40,6 +40,10 @@ static struct k_work provisioning_work;
 static struct k_work coap_get_time_work;
 static struct k_work on_connect_work;
 static struct k_work on_disconnect_work;
+static struct k_work coap_get_time_from_address_work;
+
+// Static variable to store target address for time request
+static struct sockaddr_in6 target_time_server_addr;
 
 mtd_mode_toggle_cb_t on_mtd_mode_toggle;
 
@@ -295,6 +299,51 @@ static void coap_get_time(struct k_work *item)
 	bt_nus_printf("Request sended !\n");
 }
 
+static void coap_get_time_from_address(struct k_work *item)
+{
+	ARG_UNUSED(item);
+
+	char payload[256];
+
+	// Serialize ss_data_payload to a json string
+	int ret = snprintf(payload, sizeof(payload),
+					   "{\"timestamp\":%llu,\"acc\":[%d,%d,%d],"
+					   "\"gyr\":[%d,%d,%d],\"temperature\":%.2f,\"voltage\":%.2f}",
+					   ss_data_payload.timestamp,
+					   ss_data_payload.acc[0], ss_data_payload.acc[1], ss_data_payload.acc[2],
+					   ss_data_payload.gyr[0], ss_data_payload.gyr[1], ss_data_payload.gyr[2],
+					   ss_data_payload.temperature, ss_data_payload.voltage);
+
+	if (ret < 0 || ret >= sizeof(payload))
+	{
+		LOG_ERR("Failed to format payload");
+		bt_nus_printf("Failed to format payload\n");
+		return;
+	}
+
+	// Add path "time" to server request
+	const char *const path[] = {"time", NULL};
+
+	ret = coap_send_request(COAP_METHOD_GET,
+							(const struct sockaddr *)&target_time_server_addr,
+							path, NULL, 0, &on_time_reply);
+	if (ret < 0)
+	{
+		bt_nus_printf("Failed to send CoAP request to resolved address: %d\n", ret);
+		return;
+	}
+
+	char addr_str[INET6_ADDRSTRLEN];
+	if (zsock_inet_ntop(AF_INET6, &target_time_server_addr.sin6_addr, addr_str, sizeof(addr_str)))
+	{
+		bt_nus_printf("Time request sent to resolved address: %s\n", addr_str);
+	}
+	else
+	{
+		bt_nus_printf("Time request sent to resolved address\n");
+	}
+}
+
 static void toggle_minimal_sleepy_end_device(struct k_work *item)
 {
 	otError error;
@@ -337,14 +386,14 @@ static void on_thread_state_changed(otChangedFlags flags, struct openthread_cont
 		case OT_DEVICE_ROLE_ROUTER:
 		case OT_DEVICE_ROLE_LEADER:
 			k_work_submit_to_queue(&coap_client_workq, &on_connect_work);
-			is_connected = true;
+			thread_is_connected = true;
 			break;
 
 		case OT_DEVICE_ROLE_DISABLED:
 		case OT_DEVICE_ROLE_DETACHED:
 		default:
 			k_work_submit_to_queue(&coap_client_workq, &on_disconnect_work);
-			is_connected = false;
+			thread_is_connected = false;
 			break;
 		}
 	}
@@ -354,7 +403,7 @@ static struct openthread_state_changed_cb ot_state_chaged_cb = {
 
 static void submit_work_if_connected(struct k_work *work)
 {
-	if (is_connected)
+	if (thread_is_connected)
 	{
 		k_work_submit_to_queue(&coap_client_workq, work);
 	}
@@ -382,8 +431,9 @@ void coap_client_utils_init(ot_connection_cb_t on_connect,
 	k_work_init(&on_disconnect_work, on_disconnect);
 	k_work_init(&unicast_light_work, toggle_one_light);
 	k_work_init(&multicast_light_work, toggle_mesh_lights);
-	k_work_init(&coap_get_time_work, send_provisioning_request);
+	k_work_init(&provisioning_work, send_provisioning_request);
 	k_work_init(&coap_get_time_work, coap_get_time);
+	k_work_init(&coap_get_time_from_address_work, coap_get_time_from_address);
 
 	openthread_state_changed_cb_register(openthread_get_default_context(), &ot_state_chaged_cb);
 	openthread_start(openthread_get_default_context());
@@ -413,6 +463,22 @@ void coap_client_send_provisioning_request(void)
 void coap_client_get_time()
 {
 	submit_work_if_connected(&coap_get_time_work);
+}
+
+void coap_client_get_time_from_address(const struct sockaddr_in6 *server_addr)
+{
+	if (!server_addr)
+	{
+		LOG_ERR("Invalid server address");
+		bt_nus_printf("Invalid server address\n");
+		return;
+	}
+
+	// Copy the target address to our static variable
+	memcpy(&target_time_server_addr, server_addr, sizeof(struct sockaddr_in6));
+
+	// Submit the work item
+	submit_work_if_connected(&coap_get_time_from_address_work);
 }
 
 void coap_client_toggle_minimal_sleepy_end_device(void)

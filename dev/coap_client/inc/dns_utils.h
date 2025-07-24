@@ -2,6 +2,7 @@
 #define DNS_UTILS_H
 
 #include <zephyr/net/socket.h>
+#include <stdbool.h>
 
 /**
  * DNS resolution result callback
@@ -53,5 +54,23 @@ int dns_get_resolved_address(struct sockaddr_in6 *addr);
 int dns_resolve_sync(const char *hostname, struct sockaddr_in6 *addr, int timeout_ms);
 
 void coap_client_resolve_hostname(const char *hostname);
+
+/**
+ * Get the resolved address if available
+ * @param addr Pointer to store the resolved IPv6 address
+ * @return 0 on success (address available), negative error code on failure
+ */
+int coap_client_get_resolved_address(struct sockaddr_in6 *addr);
+
+/**
+ * Check if an address has been resolved
+ * @return true if address is available, false otherwise
+ */
+bool coap_client_is_address_resolved(void);
+
+/**
+ * Clear the resolved address (useful for starting fresh)
+ */
+void coap_client_clear_resolved_address(void);
 
 #endif // DNS_UTILS_H

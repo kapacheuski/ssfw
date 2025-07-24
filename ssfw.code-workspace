@@ -1,0 +1,66 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../../../opt/nordic/ncs/v3.0.2"
+		}
+	],
+	"settings": {
+		"nrf-connect.applications": [
+			"${workspaceFolder}/dev/sstest",
+			"${workspaceFolder}/ncs-zigbee/samples/template",
+			"${workspaceFolder}/dev/coprocessor",
+			"${workspaceFolder}/dev/ot_cli",
+			"${workspaceFolder}/dev/coap_client",
+			"${workspaceFolder}/dev/dns_resolve"
+		],
+		"nrf-connect.debugging.bindings": {
+			"${workspaceFolder}/dev/beacon/build/beacon": "Launch beacon",
+			"${workspaceFolder}/dev/beacon/build": "Debug nRF (OpenOCD ST-Link)"
+		},
+		"nrf-connect.taskBindings": {
+			"build": [
+				{
+					"taskName": "build-peripheral-nus",
+					"buildConfigs": [
+						"${workspaceFolder}/dev/peripheral_nus/build/peripheral_nus"
+					]
+				}
+			]
+		},
+		"files.associations": {
+			"cmath": "cpp",
+			"chrono": "cpp",
+			"numeric": "cpp",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"ranges": "cpp",
+			"*.tcc": "cpp",
+			"unordered_map": "cpp",
+			"fstream": "cpp",
+			"istream": "cpp",
+			"ostream": "cpp",
+			"sstream": "cpp",
+			"iterator": "cpp",
+			"bitset": "cpp",
+			"*.cps": "javascript",
+			"map": "c",
+			"set": "c",
+			"unordered_set": "c",
+			"algorithm": "c",
+			"format": "c",
+			"cstdint": "c",
+			"ble_nus.h": "c",
+			"board.h": "c",
+			"devicetree.h": "c",
+			"kernel.h": "c",
+			"sensor.h": "c",
+			"device.h": "c",
+			"nrf_saadc.h": "c",
+			"net_utils.h": "c"
+		}
+	}
+}
