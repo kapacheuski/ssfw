@@ -15,6 +15,9 @@
 #include <openthread/nat64.h>
 #include <openthread/border_router.h>
 
+// Zephyr OpenThread integration
+#include <zephyr/net/openthread.h>
+
 // Standard C headers
 #include <stdio.h>
 #include <string.h>
@@ -31,15 +34,15 @@ LOG_MODULE_REGISTER(net_utils, LOG_LEVEL_INF);
  */
 void display_openthread_netdata(void)
 {
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
     {
-        LOG_ERR("No network interface available");
-        bt_nus_printf("No network interface available\n");
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
         return;
     }
 
-    otInstance *instance = net_if_l2_data(iface);
+    otInstance *instance = context->instance;
     if (!instance)
     {
         LOG_ERR("OpenThread instance not available");
@@ -300,15 +303,15 @@ void display_openthread_netdata(void)
  */
 void display_raw_netdata(void)
 {
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
     {
-        LOG_ERR("No network interface available");
-        bt_nus_printf("No network interface available\n");
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
         return;
     }
 
-    otInstance *instance = net_if_l2_data(iface);
+    otInstance *instance = context->instance;
     if (!instance)
     {
         LOG_ERR("OpenThread instance not available");
@@ -376,15 +379,15 @@ void display_raw_netdata(void)
  */
 void display_thread_topology(void)
 {
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
     {
-        LOG_ERR("No network interface available");
-        bt_nus_printf("No network interface available\n");
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
         return;
     }
 
-    otInstance *instance = net_if_l2_data(iface);
+    otInstance *instance = context->instance;
     if (!instance)
     {
         LOG_ERR("OpenThread instance not available");
@@ -396,9 +399,9 @@ void display_thread_topology(void)
     bt_nus_printf("=== Thread Topology ===\n");
 
     // Router information
-    uint8_t maxRouterId = otThreadGetMaxRouterId(instance);
-    LOG_INF("Max Router ID: %d", maxRouterId);
-    bt_nus_printf("Max Router ID: %d\n", maxRouterId);
+    // uint8_t maxRouterId = otThreadGetMaxRouterId(instance);
+    // LOG_INF("Max Router ID: %d", maxRouterId);
+    // bt_nus_printf("Max Router ID: %d\n", maxRouterId);
 
     // Leader information
     otLeaderData leaderData;
@@ -427,15 +430,15 @@ void display_thread_topology(void)
  */
 void find_nat64_prefixes(void)
 {
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
     {
-        LOG_ERR("No network interface available");
-        bt_nus_printf("No network interface available\n");
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
         return;
     }
 
-    otInstance *instance = net_if_l2_data(iface);
+    otInstance *instance = context->instance;
     if (!instance)
     {
         LOG_ERR("OpenThread instance not available");
@@ -582,6 +585,9 @@ void get_netdata_routes(void)
             case NET_ADDR_DEPRECATED:
                 state_str = "Deprecated";
                 break;
+            case NET_ADDR_ANY_STATE:
+                state_str = "Any State";
+                break;
             }
 
             const char *type_str = "Unknown";
@@ -595,6 +601,9 @@ void get_netdata_routes(void)
                 break;
             case NET_ADDR_AUTOCONF:
                 type_str = "AutoConf";
+                break;
+            case NET_ADDR_ANY:
+                type_str = "Any";
                 break;
             }
 
@@ -636,10 +645,10 @@ void get_netdata_routes(void)
     // Display OpenThread specific routing info
     bt_nus_printf("--- OpenThread Network Routes ---\n");
 
-    struct net_if *ot_iface = net_if_get_default();
-    if (ot_iface)
+    struct openthread_context *ot_context = openthread_get_default_context();
+    if (ot_context)
     {
-        otInstance *instance = net_if_l2_data(ot_iface);
+        otInstance *instance = ot_context->instance;
         if (instance)
         {
             // Display external routes from OpenThread network data
@@ -781,14 +790,14 @@ void get_netdata_routes(void)
  */
 void check_thread_status(void)
 {
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
     {
-        bt_nus_printf("No network interface available\n");
+        bt_nus_printf("OpenThread context not available\n");
         return;
     }
 
-    otInstance *instance = net_if_l2_data(iface);
+    otInstance *instance = context->instance;
     if (!instance)
     {
         bt_nus_printf("OpenThread instance not available\n");

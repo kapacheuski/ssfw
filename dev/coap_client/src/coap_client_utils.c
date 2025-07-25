@@ -36,6 +36,7 @@ static struct k_work_q coap_client_workq;
 static struct k_work unicast_light_work;
 static struct k_work multicast_light_work;
 static struct k_work toggle_MTD_SED_work;
+static struct k_work set_med_mode_work;
 static struct k_work provisioning_work;
 static struct k_work coap_get_time_work;
 static struct k_work on_connect_work;
@@ -354,6 +355,10 @@ static void toggle_minimal_sleepy_end_device(struct k_work *item)
 
 	openthread_api_mutex_lock(context);
 	mode = otThreadGetLinkMode(context->instance);
+
+	LOG_INF("Current mode before toggle: %s", mode.mRxOnWhenIdle ? "MED" : "SED");
+	bt_nus_printf("Current mode before toggle: %s\n", mode.mRxOnWhenIdle ? "MED" : "SED");
+
 	mode.mRxOnWhenIdle = !mode.mRxOnWhenIdle;
 	error = otThreadSetLinkMode(context->instance, mode);
 	openthread_api_mutex_unlock(context);
@@ -364,6 +369,8 @@ static void toggle_minimal_sleepy_end_device(struct k_work *item)
 	}
 	else
 	{
+		LOG_INF("Mode toggled to: %s", mode.mRxOnWhenIdle ? "MED" : "SED");
+		bt_nus_printf("Mode toggled to: %s\n", mode.mRxOnWhenIdle ? "MED" : "SED");
 		on_mtd_mode_toggle(mode.mRxOnWhenIdle);
 	}
 }
@@ -373,6 +380,47 @@ static void update_device_state(void)
 	struct otInstance *instance = openthread_get_default_instance();
 	otLinkModeConfig mode = otThreadGetLinkMode(instance);
 	on_mtd_mode_toggle(mode.mRxOnWhenIdle);
+}
+
+static void set_device_to_med_mode(void)
+{
+	otError error;
+	otLinkModeConfig mode;
+	struct openthread_context *context = openthread_get_default_context();
+
+	if (context == NULL)
+	{
+		LOG_ERR("OpenThread context not available");
+		return;
+	}
+
+	openthread_api_mutex_lock(context);
+	mode = otThreadGetLinkMode(context->instance);
+
+	// Set to MED mode (Minimal End Device) - RxOnWhenIdle = true
+	mode.mRxOnWhenIdle = true;
+
+	error = otThreadSetLinkMode(context->instance, mode);
+	openthread_api_mutex_unlock(context);
+
+	if (error != OT_ERROR_NONE)
+	{
+		LOG_ERR("Failed to set device to MED mode: %d", error);
+	}
+	else
+	{
+		LOG_INF("Device initialized in MED (Minimal End Device) mode");
+		bt_nus_printf("Device initialized in MED (Minimal End Device) mode\n");
+		on_mtd_mode_toggle(mode.mRxOnWhenIdle);
+	}
+}
+
+static void set_med_mode_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	// Add a small delay to ensure OpenThread is fully initialized
+	k_sleep(K_MSEC(1000));
+	set_device_to_med_mode();
 }
 
 static void on_thread_state_changed(otChangedFlags flags, struct openthread_context *ot_context,
@@ -434,6 +482,7 @@ void coap_client_utils_init(ot_connection_cb_t on_connect,
 	k_work_init(&provisioning_work, send_provisioning_request);
 	k_work_init(&coap_get_time_work, coap_get_time);
 	k_work_init(&coap_get_time_from_address_work, coap_get_time_from_address);
+	k_work_init(&set_med_mode_work, set_med_mode_work_handler);
 
 	openthread_state_changed_cb_register(openthread_get_default_context(), &ot_state_chaged_cb);
 	openthread_start(openthread_get_default_context());
@@ -442,7 +491,8 @@ void coap_client_utils_init(ot_connection_cb_t on_connect,
 	{
 		k_work_init(&toggle_MTD_SED_work,
 					toggle_minimal_sleepy_end_device);
-		update_device_state();
+		// Initialize device in MED mode instead of default SED mode
+		k_work_submit(&set_med_mode_work);
 	}
 }
 
