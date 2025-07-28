@@ -25,6 +25,7 @@
 #include <openthread/instance.h>
 #include <openthread/thread.h>
 #include <openthread/netdata.h>    // Add this for otNetDataGetNat64Prefix
+#include <openthread/dns_client.h> // Add this for DNS client functions
 #include <zephyr/net/openthread.h> // Add this for openthread_get_default_context
 
 #define CONFIG_COAP_SAMPLE_SERVER_PORT 5683
@@ -39,16 +40,12 @@ static struct sockaddr_in6 resolved_addr;
 
 extern bool thread_is_connected;
 
-// DNS result data structure
+// DNS result data structure for OpenThread
 struct dns_result_data
 {
-    enum dns_resolve_status status;
-    int ai_family;
-    union
-    {
-        struct sockaddr_in ipv4_addr;
-        struct sockaddr_in6 ipv6_addr;
-    } addr;
+    otError error;
+    otIp6Address ipv6_address;
+    uint32_t ttl;
     char hostname[64];
 };
 
@@ -139,118 +136,86 @@ bool convert_ipv4_to_ipv6_nat64(uint8_t *ipv4_addr, struct in6_addr *ipv6_addr)
     return true;
 }
 
-// DNS result work handler - processes DNS results safely in work queue context
+// DNS result work handler - processes OpenThread DNS results safely in work queue context
 static void dns_result_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
     const char *hostname = dns_result.hostname;
-    enum dns_resolve_status status = dns_result.status;
+    otError error = dns_result.error;
 
-    if (status == DNS_EAI_INPROGRESS)
+    if (error == OT_ERROR_NONE)
     {
-        if (dns_result.ai_family == AF_INET6)
+        char addr_str_ipv4[INET_ADDRSTRLEN];
+        char addr_str_ipv6[INET6_ADDRSTRLEN];
+
+        // Convert OpenThread IPv4 address to string for logging
+        if (zsock_inet_ntop(AF_INET6, &dns_result.ipv6_address, addr_str_ipv6, sizeof(addr_str_ipv6)))
         {
-            char addr_str[INET6_ADDRSTRLEN];
-
-            // Copy the resolved address
-            memcpy(&resolved_addr, &dns_result.addr.ipv6_addr, sizeof(struct sockaddr_in6));
-            resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
-
-            if (zsock_inet_ntop(AF_INET6, &resolved_addr.sin6_addr, addr_str, sizeof(addr_str)))
-            {
-                LOG_INF("DNS resolved %s to IPv6: %s", hostname, addr_str);
-                bt_nus_printf("DNS resolved %s to IPv6: %s\n", hostname, addr_str);
-                address_resolved = true; // Mark address as resolved
-            }
+            LOG_INF("OpenThread DNS resolved %s to IPv6: %s (TTL: %u)", hostname, addr_str_ipv6, dns_result.ttl);
+            bt_nus_printf("OpenThread DNS resolved %s to IPv6: %s (TTL: %u)\n", hostname, addr_str_ipv6, dns_result.ttl);
         }
-        else if (dns_result.ai_family == AF_INET)
-        {
-            char addr_str_ipv4[INET_ADDRSTRLEN];
-            char addr_str_ipv6[INET6_ADDRSTRLEN];
 
-            // Convert IPv4 address to string for logging
-            if (zsock_inet_ntop(AF_INET, &dns_result.addr.ipv4_addr.sin_addr, addr_str_ipv4, sizeof(addr_str_ipv4)))
-            {
-                LOG_INF("DNS resolved %s to IPv4: %s", hostname, addr_str_ipv4);
-                bt_nus_printf("DNS resolved %s to IPv4: %s\n", hostname, addr_str_ipv4);
-            }
+        memset(&resolved_addr, 0, sizeof(resolved_addr));
+        resolved_addr.sin6_family = AF_INET6;
+        resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
+        memcpy(&resolved_addr.sin6_addr, &dns_result.ipv6_address, sizeof(struct in6_addr));
+        address_resolved = true; // Mark address as resolved
 
-            // Convert IPv4 to synthetic IPv6 using OpenThread NAT64
-            struct in6_addr ipv6_addr;
+        // // Convert IPv4 to synthetic IPv6 using OpenThread NAT64
+        // struct in6_addr ipv6_addr;
 
-            if (convert_ipv4_to_ipv6_nat64((uint8_t *)&dns_result.addr.ipv4_addr.sin_addr, &ipv6_addr))
-            {
-                // Set up the IPv6 sockaddr structure
-                memset(&resolved_addr, 0, sizeof(resolved_addr));
-                resolved_addr.sin6_family = AF_INET6;
-                resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
-                memcpy(&resolved_addr.sin6_addr, &ipv6_addr, sizeof(struct in6_addr));
+        // if (convert_ipv4_to_ipv6_nat64((uint8_t *)&dns_result.ipv6_address, &ipv6_addr))
+        // {
+        //     // Set up the IPv6 sockaddr structure
+        //     memset(&resolved_addr, 0, sizeof(resolved_addr));
+        //     resolved_addr.sin6_family = AF_INET6;
+        //     resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
+        //     memcpy(&resolved_addr.sin6_addr, &ipv6_addr, sizeof(struct in6_addr));
 
-                if (zsock_inet_ntop(AF_INET6, &ipv6_addr, addr_str_ipv6, sizeof(addr_str_ipv6)))
-                {
-                    LOG_INF("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s", addr_str_ipv4, addr_str_ipv6);
-                    bt_nus_printf("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s\n", addr_str_ipv4, addr_str_ipv6);
-                    address_resolved = true; // Mark address as resolved
-                }
-            }
-            else
-            {
-                LOG_ERR("Failed to convert IPv4 to IPv6 using OpenThread NAT64");
-                bt_nus_printf("Failed to convert IPv4 to IPv6 using OpenThread NAT64\n");
-                address_resolved = false; // Mark resolution as failed
-            }
-        }
+        //     if (zsock_inet_ntop(AF_INET6, &ipv6_addr, addr_str_ipv6, sizeof(addr_str_ipv6)))
+        //     {
+        //         LOG_INF("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s", addr_str_ipv4, addr_str_ipv6);
+        //         bt_nus_printf("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s\n", addr_str_ipv4, addr_str_ipv6);
+        //         address_resolved = true; // Mark address as resolved
+        //     }
+        // }
+        // else
+        // {
+        //     LOG_ERR("Failed to convert IPv4 to IPv6 using OpenThread NAT64");
+        //     bt_nus_printf("Failed to convert IPv4 to IPv6 using OpenThread NAT64\n");
+        //     address_resolved = false; // Mark resolution as failed
+        // }
     }
-    else if (status == DNS_EAI_ALLDONE)
+    else
     {
-        LOG_INF("DNS resolution complete for %s", hostname);
-        bt_nus_printf("DNS resolution complete for %s\n", hostname);
-        // Note: address_resolved flag should already be set if successful
-    }
-    else if (status == DNS_EAI_FAIL)
-    {
-        LOG_ERR("DNS resolution failed for %s", hostname);
-        bt_nus_printf("DNS resolution failed for %s\n", hostname);
-        address_resolved = false; // Mark resolution as failed
-    }
-    else if (status == DNS_EAI_CANCELED)
-    {
-        LOG_WRN("DNS resolution cancelled or timed out for %s", hostname);
-        bt_nus_printf("DNS resolution cancelled or timed out for %s\n", hostname);
+        LOG_ERR("OpenThread DNS resolution failed for %s: error %d", hostname, error);
+        bt_nus_printf("OpenThread DNS resolution failed for %s: error %d\n", hostname, error);
         address_resolved = false; // Mark resolution as failed
     }
 }
 
-// DNS callback for Zephyr DNS resolver - minimal implementation
-static void zephyr_dns_callback(enum dns_resolve_status status,
-                                struct dns_addrinfo *info, void *user_data)
+// OpenThread DNS callback - minimal implementation
+static void openthread_dns_callback(otError aError, const otDnsAddressResponse *aResponse, void *aContext)
 {
-    const char *hostname = (const char *)user_data;
-
-    // Simple acknowledgment that we're in the callback
-    // Don't use bt_nus_printf here as it might cause issues in callback context
+    const char *hostname = (const char *)aContext;
 
     // Store result data for processing in work queue
-    dns_result.status = status;
+    dns_result.error = aError;
     strncpy(dns_result.hostname, hostname, sizeof(dns_result.hostname) - 1);
     dns_result.hostname[sizeof(dns_result.hostname) - 1] = '\0';
 
-    if (status == DNS_EAI_INPROGRESS && info)
+    if (aError == OT_ERROR_NONE && aResponse)
     {
-        dns_result.ai_family = info->ai_family;
 
-        if (info->ai_family == AF_INET6)
+        // Get the first IPv4 address from the response
+        otIp6Address ipv6Address;
+        uint32_t ttl;
+
+        if (otDnsAddressResponseGetAddress(aResponse, 0, &ipv6Address, &ttl) == OT_ERROR_NONE)
         {
-            // Copy IPv6 address
-            struct sockaddr_in6 *addr_ptr = (struct sockaddr_in6 *)(&(info->ai_addr));
-            memcpy(&dns_result.addr.ipv6_addr, addr_ptr, sizeof(struct sockaddr_in6));
-        }
-        else if (info->ai_family == AF_INET)
-        {
-            // Copy IPv4 address
-            struct sockaddr_in *ipv4_addr_ptr = (struct sockaddr_in *)(&info->ai_addr);
-            memcpy(&dns_result.addr.ipv4_addr, ipv4_addr_ptr, sizeof(struct sockaddr_in));
+            memcpy(&dns_result.ipv6_address, &ipv6Address, sizeof(otIp6Address));
+            dns_result.ttl = ttl;
         }
     }
 
@@ -259,17 +224,14 @@ static void zephyr_dns_callback(enum dns_resolve_status status,
 }
 
 /**
- * DNS resolution work handler using Zephyr DNS resolver
+ * DNS resolution work handler using OpenThread DNS client
  * This runs in a work queue context to avoid blocking
  */
 static void dns_resolve_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    uint16_t dns_id;
-    int ret;
-
-    LOG_INF("Starting DNS resolution for: %s", target_hostname);
+    LOG_INF("Starting OpenThread DNS resolution for: %s", target_hostname);
 
     // Validate hostname
     if (strlen(target_hostname) == 0)
@@ -279,47 +241,84 @@ static void dns_resolve_work_handler(struct k_work *work)
         return;
     }
 
-    // Use Zephyr DNS resolver with proper timeout
-    ret = dns_get_addr_info(target_hostname,
-                            DNS_QUERY_TYPE_A, // IPv4 query
-                            &dns_id,
-                            zephyr_dns_callback,
-                            (void *)target_hostname,
-                            10000); // Use K_SECONDS macro
-
-    if (ret < 0)
+    // Get OpenThread instance
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context || !context->instance)
     {
-        LOG_ERR("Cannot start DNS resolution for %s (%d)", target_hostname, ret);
-        bt_nus_printf("Cannot start DNS resolution for %s (%d)\n", target_hostname, ret);
+        LOG_ERR("OpenThread context or instance not available");
+        bt_nus_printf("OpenThread context or instance not available\n");
+        return;
+    }
 
-        // Print more detailed error info
-        switch (ret)
+    // Check if Thread is attached before attempting DNS resolution
+    otDeviceRole role = otThreadGetDeviceRole(context->instance);
+    if (role == OT_DEVICE_ROLE_DISABLED || role == OT_DEVICE_ROLE_DETACHED)
+    {
+        LOG_ERR("OpenThread not attached to network (role: %d), cannot resolve DNS", role);
+        bt_nus_printf("OpenThread not attached to network (role: %d), cannot resolve DNS\n", role);
+        return;
+    }
+
+    //     typedef struct otDnsQueryConfig
+    // {
+    //     otSockAddr          mServerSockAddr;  ///< Server address (IPv6 addr/port). All zero or zero port for unspecified.
+    //     uint32_t            mResponseTimeout; ///< Wait time (in msec) to rx response. Zero indicates unspecified value.
+    //     uint8_t             mMaxTxAttempts;   ///< Maximum tx attempts before reporting failure. Zero for unspecified value.
+    //     otDnsRecursionFlag  mRecursionFlag;   ///< Indicates whether the server can resolve the query recursively or not.
+    //     otDnsNat64Mode      mNat64Mode;       ///< Allow/Disallow NAT64 address translation during address resolution.
+    //     otDnsServiceMode    mServiceMode;     ///< Determines which records to query during service resolution.
+    //     otDnsTransportProto mTransportProto;  ///< Select default transport protocol.
+    // } otDnsQueryConfig;
+
+    const otDnsQueryConfig *config = otDnsClientGetDefaultConfig(context->instance);
+    // otDnsQueryConfig config = {
+    //     .mServerSockAddr = {0}, // Use default server address
+    //     .mResponseTimeout = 5000, // 5 seconds timeout
+    //     .mMaxTxAttempts = 3, // 3 attempts
+    //     .mRecursionFlag = OT_DNS_REC_FLAG_UNSET, // Default recursion flag
+    //     .mNat64Mode = OT_DNS_NAT64_UNSPECIFIED, // Use default NAT64 mode
+    //     .mServiceMode = OT_DNS_SERVICE_MODE_UNSPECIFIED, // Use default service mode
+    //     .mTransportProto = OT_DNS_TRANSPORT_UNSPECIFIED // Use default transport protocol
+
+    // }
+
+    // Use OpenThread DNS client for IPv4 resolution
+    otError error = otDnsClientResolveIp4Address(context->instance,
+                                                 target_hostname,
+                                                 openthread_dns_callback,
+                                                 (void *)target_hostname,
+                                                 config); // Use default DNS config
+
+    if (error != OT_ERROR_NONE)
+    {
+        LOG_ERR("Cannot start OpenThread DNS resolution for %s (error: %d)", target_hostname, error);
+        bt_nus_printf("Cannot start OpenThread DNS resolution for %s (error: %d)\n", target_hostname, error);
+
+        // Print more detailed error info based on OpenThread error codes
+        switch (error)
         {
-        case -EINVAL:
+        case OT_ERROR_INVALID_ARGS:
             bt_nus_printf("Invalid DNS parameters - check hostname format\n");
             break;
-        case -ENOTSUP:
-            bt_nus_printf("DNS resolution not supported\n");
-            break;
-        case -ENOMEM:
+        case OT_ERROR_NO_BUFS:
             bt_nus_printf("Out of memory for DNS resolution\n");
             break;
-        case -EAGAIN:
+        case OT_ERROR_BUSY:
             bt_nus_printf("DNS resolver busy, try again later\n");
             break;
-        case -ENODEV:
-            bt_nus_printf("DNS context not active - check network connection\n");
+        case OT_ERROR_INVALID_STATE:
+            bt_nus_printf("OpenThread not in correct state for DNS resolution\n");
             break;
         default:
-            bt_nus_printf("DNS error code: %d", ret);
+            bt_nus_printf("OpenThread DNS error code: %d\n", error);
             break;
         }
 
         return;
     }
 
-    LOG_DBG("DNS id %u", dns_id);
-    bt_nus_printf("DNS resolution started for %s with ID: %d \n", target_hostname, dns_id);
+    LOG_INF("OpenThread DNS resolution started for %s", target_hostname);
+    bt_nus_printf("OpenThread DNS resolution started for %s\n", target_hostname);
 }
 
 /**
@@ -397,7 +396,7 @@ void coap_client_clear_resolved_address(void)
     bt_nus_printf("Cleared resolved address\n");
 }
 /**
- * Initialize DNS utilities and context
+ * Initialize DNS utilities with OpenThread DNS client
  */
 void dns_utils_init(void)
 {
@@ -405,6 +404,6 @@ void dns_utils_init(void)
     k_work_init(&dns_resolve_work, dns_resolve_work_handler);
     k_work_init(&dns_result_work, dns_result_work_handler);
 
-    LOG_INF("DNS utilities initialized with context and servers");
-    bt_nus_printf("DNS utilities initialized with context and servers\n");
+    LOG_INF("DNS utilities initialized with OpenThread DNS client");
+    bt_nus_printf("DNS utilities initialized with OpenThread DNS client\n");
 }

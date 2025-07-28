@@ -34,6 +34,7 @@ LOG_MODULE_REGISTER(coap_client, CONFIG_COAP_CLIENT_LOG_LEVEL);
 #define COMMAND_REQUEST_TIME_FROM_RESOLVED 'r' // Request time from resolved address
 #define COMMAND_REQUEST_CPU_ID 'c'			   // Print unique CPU ID and MAC address
 #define COMMAND_REQUEST_TOGGLE_MODE 's'		   // Toggle SED/MED mode
+#define COMMAND_REQUEST_DATASET 'o'			   // Display operational dataset
 
 #define CONFIG_COAP_SAMPLE_SERVER_HOSTNAME "srv-ss.vibromatika.by"
 
@@ -198,6 +199,14 @@ static void on_nus_received(struct bt_conn *conn, const uint8_t *const data, uin
 	}
 	break;
 
+	case COMMAND_REQUEST_DATASET: // Display operational dataset
+	{
+		LOG_INF("Displaying operational dataset");
+		bt_nus_printf("Displaying operational dataset\n");
+		display_operational_dataset();
+	}
+	break;
+
 	default:
 		LOG_WRN("Received invalid data from NUS");
 	}
@@ -296,6 +305,7 @@ int main(void)
 	LOG_INF("  'i' - Show network data");
 	LOG_INF("  'c' - Print unique CPU ID and MAC address");
 	LOG_INF("  's' - Toggle SED/MED mode");
+	LOG_INF("  'o' - Display operational dataset");
 
 	bt_nus_printf("CoAP Client started. Available commands:\n");
 	bt_nus_printf("  'u' - Toggle unicast light\n");
@@ -307,6 +317,7 @@ int main(void)
 	bt_nus_printf("  'i' - Show network data\n");
 	bt_nus_printf("  'c' - Print unique CPU ID and MAC address\n");
 	bt_nus_printf("  's' - Toggle SED/MED mode\n");
+	bt_nus_printf("  'o' - Display operational dataset\n");
 
 	return 0;
 }

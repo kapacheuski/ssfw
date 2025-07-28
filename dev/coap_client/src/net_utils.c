@@ -14,6 +14,8 @@
 #include <openthread/link.h>
 #include <openthread/nat64.h>
 #include <openthread/border_router.h>
+#include <openthread/dataset.h>
+#include <openthread/dns_client.h>
 
 // Zephyr OpenThread integration
 #include <zephyr/net/openthread.h>
@@ -87,7 +89,7 @@ void display_openthread_netdata(void)
     }
 
     // Display network name and PAN ID
-    size_t nameLength;
+
     const char *networkName = otThreadGetNetworkName(instance);
     if (networkName)
     {
@@ -268,9 +270,6 @@ void display_openthread_netdata(void)
         LOG_INF("No NAT64 routes found in network data");
         bt_nus_printf("No NAT64 routes found in network data\n");
 
-        // Try to check if NAT64 translator is enabled locally
-        bool nat64Enabled = false;
-
 #ifdef CONFIG_OPENTHREAD_NAT64_TRANSLATOR
         // Check if local NAT64 is enabled (if supported)
         // This is a fallback check
@@ -322,11 +321,11 @@ void display_raw_netdata(void)
     LOG_INF("=== Raw Network Data ===");
     bt_nus_printf("=== Raw Network Data ===\n");
 
-    uint8_t data[256];
-    uint8_t length = sizeof(data);
+    uint8_t data[255];
+    uint8_t length = 255;
 
     otError error = otNetDataGet(instance, false, data, &length);
-    if (error == OT_ERROR_NONE)
+    if (error == (uint8_t)OT_ERROR_NONE)
     {
         LOG_INF("Network Data Length: %d bytes", length);
         bt_nus_printf("Network Data Length: %d bytes\n", length);
@@ -348,9 +347,9 @@ void display_raw_netdata(void)
     }
 
     // Also get stable network data
-    length = sizeof(data);
+    length = (uint8_t)sizeof(data);
     error = otNetDataGet(instance, true, data, &length);
-    if (error == OT_ERROR_NONE)
+    if (error == (uint8_t)OT_ERROR_NONE)
     {
         LOG_INF("Stable Network Data Length: %d bytes", length);
         bt_nus_printf("Stable Network Data Length: %d bytes\n", length);
@@ -605,6 +604,9 @@ void get_netdata_routes(void)
             case NET_ADDR_ANY:
                 type_str = "Any";
                 break;
+            case NET_ADDR_OVERRIDABLE:
+                type_str = "Overridable";
+                break;
             }
 
             bt_nus_printf("  Address %d: %s\n", addr_count, addr_str);
@@ -786,6 +788,202 @@ void get_netdata_routes(void)
 // }
 
 /**
+ * Display Thread operational dataset information
+ */
+void display_operational_dataset(void)
+{
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
+    {
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
+        return;
+    }
+
+    otInstance *instance = context->instance;
+    if (!instance)
+    {
+        LOG_ERR("OpenThread instance not available");
+        bt_nus_printf("OpenThread instance not available\n");
+        return;
+    }
+
+    LOG_INF("=== Operational Dataset ===");
+    bt_nus_printf("=== Operational Dataset ===\n");
+
+    // Get active operational dataset
+    otOperationalDataset dataset;
+    otError error = otDatasetGetActive(instance, &dataset);
+
+    if (error != OT_ERROR_NONE)
+    {
+        LOG_ERR("Failed to get active operational dataset: %d", error);
+        bt_nus_printf("Failed to get active operational dataset: %d\n", error);
+        return;
+    }
+
+    // Display network name
+    if (dataset.mComponents.mIsNetworkNamePresent)
+    {
+        // Network name is null-terminated string, calculate length safely
+        size_t name_len = strnlen((const char *)dataset.mNetworkName.m8, OT_NETWORK_NAME_MAX_SIZE);
+        LOG_INF("Network Name: %.*s", (int)name_len, dataset.mNetworkName.m8);
+        bt_nus_printf("Network Name: %.*s\n", (int)name_len, dataset.mNetworkName.m8);
+    }
+    else
+    {
+        LOG_INF("Network Name: Not set");
+        bt_nus_printf("Network Name: Not set\n");
+    }
+
+    // Display extended PAN ID
+    if (dataset.mComponents.mIsExtendedPanIdPresent)
+    {
+        LOG_INF("Extended PAN ID: %02x%02x%02x%02x%02x%02x%02x%02x",
+                dataset.mExtendedPanId.m8[0], dataset.mExtendedPanId.m8[1],
+                dataset.mExtendedPanId.m8[2], dataset.mExtendedPanId.m8[3],
+                dataset.mExtendedPanId.m8[4], dataset.mExtendedPanId.m8[5],
+                dataset.mExtendedPanId.m8[6], dataset.mExtendedPanId.m8[7]);
+        bt_nus_printf("Extended PAN ID: %02x%02x%02x%02x%02x%02x%02x%02x\n",
+                      dataset.mExtendedPanId.m8[0], dataset.mExtendedPanId.m8[1],
+                      dataset.mExtendedPanId.m8[2], dataset.mExtendedPanId.m8[3],
+                      dataset.mExtendedPanId.m8[4], dataset.mExtendedPanId.m8[5],
+                      dataset.mExtendedPanId.m8[6], dataset.mExtendedPanId.m8[7]);
+    }
+
+    // Display network key
+    if (dataset.mComponents.mIsNetworkKeyPresent)
+    {
+        LOG_INF("Network Key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+                dataset.mNetworkKey.m8[0], dataset.mNetworkKey.m8[1], dataset.mNetworkKey.m8[2], dataset.mNetworkKey.m8[3],
+                dataset.mNetworkKey.m8[4], dataset.mNetworkKey.m8[5], dataset.mNetworkKey.m8[6], dataset.mNetworkKey.m8[7],
+                dataset.mNetworkKey.m8[8], dataset.mNetworkKey.m8[9], dataset.mNetworkKey.m8[10], dataset.mNetworkKey.m8[11],
+                dataset.mNetworkKey.m8[12], dataset.mNetworkKey.m8[13], dataset.mNetworkKey.m8[14], dataset.mNetworkKey.m8[15]);
+        bt_nus_printf("Network Key: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                      dataset.mNetworkKey.m8[0], dataset.mNetworkKey.m8[1], dataset.mNetworkKey.m8[2], dataset.mNetworkKey.m8[3],
+                      dataset.mNetworkKey.m8[4], dataset.mNetworkKey.m8[5], dataset.mNetworkKey.m8[6], dataset.mNetworkKey.m8[7],
+                      dataset.mNetworkKey.m8[8], dataset.mNetworkKey.m8[9], dataset.mNetworkKey.m8[10], dataset.mNetworkKey.m8[11],
+                      dataset.mNetworkKey.m8[12], dataset.mNetworkKey.m8[13], dataset.mNetworkKey.m8[14], dataset.mNetworkKey.m8[15]);
+    }
+
+    // Display mesh local prefix
+    if (dataset.mComponents.mIsMeshLocalPrefixPresent)
+    {
+        char prefix_str[INET6_ADDRSTRLEN];
+        struct in6_addr ml_prefix;
+        memcpy(&ml_prefix, dataset.mMeshLocalPrefix.m8, 8);
+        memset(&ml_prefix.s6_addr[8], 0, 8); // Clear the rest
+
+        if (zsock_inet_ntop(AF_INET6, &ml_prefix, prefix_str, sizeof(prefix_str)))
+        {
+            LOG_INF("Mesh Local Prefix: %s/64", prefix_str);
+            bt_nus_printf("Mesh Local Prefix: %s/64\n", prefix_str);
+        }
+    }
+
+    // Display PAN ID
+    if (dataset.mComponents.mIsPanIdPresent)
+    {
+        LOG_INF("PAN ID: 0x%04x", dataset.mPanId);
+        bt_nus_printf("PAN ID: 0x%04x\n", dataset.mPanId);
+    }
+
+    // Display channel
+    if (dataset.mComponents.mIsChannelPresent)
+    {
+        LOG_INF("Channel: %d", dataset.mChannel);
+        bt_nus_printf("Channel: %d\n", dataset.mChannel);
+    }
+
+    // Display PSKc (Pre-Shared Key for the Commissioner)
+    if (dataset.mComponents.mIsPskcPresent)
+    {
+        LOG_INF("PSKc: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+                dataset.mPskc.m8[0], dataset.mPskc.m8[1], dataset.mPskc.m8[2], dataset.mPskc.m8[3],
+                dataset.mPskc.m8[4], dataset.mPskc.m8[5], dataset.mPskc.m8[6], dataset.mPskc.m8[7],
+                dataset.mPskc.m8[8], dataset.mPskc.m8[9], dataset.mPskc.m8[10], dataset.mPskc.m8[11],
+                dataset.mPskc.m8[12], dataset.mPskc.m8[13], dataset.mPskc.m8[14], dataset.mPskc.m8[15]);
+        bt_nus_printf("PSKc: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                      dataset.mPskc.m8[0], dataset.mPskc.m8[1], dataset.mPskc.m8[2], dataset.mPskc.m8[3],
+                      dataset.mPskc.m8[4], dataset.mPskc.m8[5], dataset.mPskc.m8[6], dataset.mPskc.m8[7],
+                      dataset.mPskc.m8[8], dataset.mPskc.m8[9], dataset.mPskc.m8[10], dataset.mPskc.m8[11],
+                      dataset.mPskc.m8[12], dataset.mPskc.m8[13], dataset.mPskc.m8[14], dataset.mPskc.m8[15]);
+    }
+
+    // Display security policy
+    if (dataset.mComponents.mIsSecurityPolicyPresent)
+    {
+        LOG_INF("Security Policy:");
+        LOG_INF("  Rotation Time: %d hours", dataset.mSecurityPolicy.mRotationTime);
+        LOG_INF("  Flags: 0x%02x", dataset.mSecurityPolicy.mObtainNetworkKeyEnabled |
+                                       (dataset.mSecurityPolicy.mNativeCommissioningEnabled << 1) |
+                                       (dataset.mSecurityPolicy.mRoutersEnabled << 2) |
+                                       (dataset.mSecurityPolicy.mExternalCommissioningEnabled << 3) |
+                                       (dataset.mSecurityPolicy.mCommercialCommissioningEnabled << 5) |
+                                       (dataset.mSecurityPolicy.mAutonomousEnrollmentEnabled << 6) |
+                                       (dataset.mSecurityPolicy.mNetworkKeyProvisioningEnabled << 7));
+
+        bt_nus_printf("Security Policy:\n");
+        bt_nus_printf("  Rotation Time: %d hours\n", dataset.mSecurityPolicy.mRotationTime);
+        bt_nus_printf("  Network Key: %s\n", dataset.mSecurityPolicy.mObtainNetworkKeyEnabled ? "Enabled" : "Disabled");
+        bt_nus_printf("  Native Commissioning: %s\n", dataset.mSecurityPolicy.mNativeCommissioningEnabled ? "Enabled" : "Disabled");
+        bt_nus_printf("  Routers: %s\n", dataset.mSecurityPolicy.mRoutersEnabled ? "Enabled" : "Disabled");
+        bt_nus_printf("  External Commissioning: %s\n", dataset.mSecurityPolicy.mExternalCommissioningEnabled ? "Enabled" : "Disabled");
+        bt_nus_printf("  Commercial Commissioning: %s\n", dataset.mSecurityPolicy.mCommercialCommissioningEnabled ? "Enabled" : "Disabled");
+    }
+
+    // Display channel mask
+    if (dataset.mComponents.mIsChannelMaskPresent)
+    {
+        LOG_INF("Channel Mask: 0x%08x", dataset.mChannelMask);
+        bt_nus_printf("Channel Mask: 0x%08x\n", dataset.mChannelMask);
+
+        // Show available channels
+        bt_nus_printf("Available Channels: ");
+        for (int i = 11; i <= 26; i++)
+        {
+            if (dataset.mChannelMask & (1 << i))
+            {
+                bt_nus_printf("%d ", i);
+            }
+        }
+        bt_nus_printf("\n");
+    }
+
+    // Display active timestamp
+    if (dataset.mComponents.mIsActiveTimestampPresent)
+    {
+        LOG_INF("Active Timestamp: %llu.%03u",
+                dataset.mActiveTimestamp.mSeconds,
+                (dataset.mActiveTimestamp.mTicks * 1000) / 32768);
+        bt_nus_printf("Active Timestamp: %llu.%03u\n",
+                      dataset.mActiveTimestamp.mSeconds,
+                      (dataset.mActiveTimestamp.mTicks * 1000) / 32768);
+    }
+
+    // Display pending timestamp
+    if (dataset.mComponents.mIsPendingTimestampPresent)
+    {
+        LOG_INF("Pending Timestamp: %llu.%03u",
+                dataset.mPendingTimestamp.mSeconds,
+                (dataset.mPendingTimestamp.mTicks * 1000) / 32768);
+        bt_nus_printf("Pending Timestamp: %llu.%03u\n",
+                      dataset.mPendingTimestamp.mSeconds,
+                      (dataset.mPendingTimestamp.mTicks * 1000) / 32768);
+    }
+
+    // Display delay timer
+    if (dataset.mComponents.mIsDelayPresent)
+    {
+        LOG_INF("Delay Timer: %u ms", dataset.mDelay);
+        bt_nus_printf("Delay Timer: %u ms\n", dataset.mDelay);
+    }
+
+    LOG_INF("=== End Operational Dataset ===");
+    bt_nus_printf("=== End Operational Dataset ===\n");
+}
+
+/**
  * Check Thread network attachment status
  */
 void check_thread_status(void)
@@ -947,6 +1145,208 @@ void check_thread_status(void)
 // }
 
 /**
+ * Display current DNS configuration
+ */
+void display_dns_config(void)
+{
+    struct openthread_context *context = openthread_get_default_context();
+    if (!context)
+    {
+        LOG_ERR("OpenThread context not available");
+        bt_nus_printf("OpenThread context not available\n");
+        return;
+    }
+
+    otInstance *instance = context->instance;
+    if (!instance)
+    {
+        LOG_ERR("OpenThread instance not available");
+        bt_nus_printf("OpenThread instance not available\n");
+        return;
+    }
+
+    LOG_INF("=== DNS Configuration ===");
+    bt_nus_printf("=== DNS Configuration ===\n");
+
+    // Get default DNS query configuration
+    const otDnsQueryConfig *defaultConfig = otDnsClientGetDefaultConfig(instance);
+    if (defaultConfig)
+    {
+        LOG_INF("Default DNS Configuration:");
+        bt_nus_printf("Default DNS Configuration:\n");
+
+                // Display server socket address
+        char server_addr_str[INET6_ADDRSTRLEN];
+        if (zsock_inet_ntop(AF_INET6, &defaultConfig->mServerSockAddr.mAddress, server_addr_str, sizeof(server_addr_str)))
+        {
+            LOG_INF("  Server Address: %s", server_addr_str);
+            LOG_INF("  Server Port: %u", defaultConfig->mServerSockAddr.mPort);
+            bt_nus_printf("  Server Address: %s\n", server_addr_str);
+            bt_nus_printf("  Server Port: %u\n", defaultConfig->mServerSockAddr.mPort);
+        }
+
+        LOG_INF("  Response Timeout: %u ms", defaultConfig->mResponseTimeout);
+        LOG_INF("  Max Tx Attempts: %u", defaultConfig->mMaxTxAttempts);
+        LOG_INF("  Recursion Desired: %s", defaultConfig->mRecursionFlag == OT_DNS_FLAG_RECURSION_DESIRED ? "Yes" : "No");
+
+        bt_nus_printf("  Response Timeout: %u ms\n", defaultConfig->mResponseTimeout);
+        bt_nus_printf("  Max Tx Attempts: %u\n", defaultConfig->mMaxTxAttempts);
+        bt_nus_printf("  Recursion Desired: %s\n", defaultConfig->mRecursionFlag == OT_DNS_FLAG_RECURSION_DESIRED ? "Yes" : "No");
+
+        // Display NAT64 mode
+        const char *nat64_mode_str = "Unknown";
+        switch (defaultConfig->mNat64Mode)
+        {
+        case OT_DNS_NAT64_UNSPECIFIED:
+            nat64_mode_str = "Unspecified";
+            break;
+        case OT_DNS_NAT64_ALLOW:
+            nat64_mode_str = "Allow";
+            break;
+        case OT_DNS_NAT64_DISALLOW:
+            nat64_mode_str = "Disallow";
+            break;
+        }
+
+        LOG_INF("  NAT64 Mode: %s", nat64_mode_str);
+        bt_nus_printf("  NAT64 Mode: %s\n", nat64_mode_str);
+
+        // Display transport protocol
+        const char *transport_str = defaultConfig->mTransportProto == OT_DNS_TRANSPORT_UDP ? "UDP" : "TCP";
+        LOG_INF("  Transport Protocol: %s", transport_str);
+        bt_nus_printf("  Transport Protocol: %s\n", transport_str);
+    }
+    else
+    {
+        LOG_WRN("No default DNS configuration available");
+        bt_nus_printf("No default DNS configuration available\n");
+    }
+
+    return;
+
+    // Try to get DNS servers from network data
+    LOG_INF("--- DNS Servers from Network Data ---");
+    bt_nus_printf("--- DNS Servers from Network Data ---\n");
+
+    otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    otServiceConfig serviceConfig;
+    int dns_server_count = 0;
+    bool found_dns_service = false;
+
+    while (otNetDataGetNextService(instance, &iterator, &serviceConfig) == OT_ERROR_NONE)
+    {
+        // Look for DNS service (enterprise number 44970 is used for Thread DNS)
+        if (serviceConfig.mEnterpriseNumber == 44970)
+        {
+            found_dns_service = true;
+            LOG_INF("DNS Service found:");
+            bt_nus_printf("DNS Service found:\n");
+
+            // Parse service data for DNS server addresses
+            if (serviceConfig.mServiceDataLength >= 16) // At least one IPv6 address
+            {
+                for (uint8_t i = 0; i < serviceConfig.mServiceDataLength; i += 16)
+                {
+                    if (i + 16 <= serviceConfig.mServiceDataLength)
+                    {
+                        char dns_server_str[INET6_ADDRSTRLEN];
+                        if (zsock_inet_ntop(AF_INET6, &serviceConfig.mServiceData[i], dns_server_str, sizeof(dns_server_str)))
+                        {
+                            LOG_INF("  DNS Server %d: %s", dns_server_count, dns_server_str);
+                            bt_nus_printf("  DNS Server %d: %s\n", dns_server_count, dns_server_str);
+                            dns_server_count++;
+                        }
+                    }
+                }
+            }
+
+            // Display raw service data
+            char service_data_hex[256] = {0};
+            for (uint8_t i = 0; i < serviceConfig.mServiceDataLength && i < 64; i++)
+            {
+                snprintf(service_data_hex + (i * 3), sizeof(service_data_hex) - (i * 3),
+                         "%02x ", serviceConfig.mServiceData[i]);
+            }
+            LOG_INF("  Service Data: %s", service_data_hex);
+            bt_nus_printf("  Service Data: %s\n", service_data_hex);
+        }
+    }
+
+    if (!found_dns_service)
+    {
+        LOG_INF("No DNS services found in network data");
+        bt_nus_printf("No DNS services found in network data\n");
+    }
+
+    // Check for DNS servers in border router configurations
+    LOG_INF("--- DNS from Border Router Services ---");
+    bt_nus_printf("--- DNS from Border Router Services ---\n");
+
+    iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    otServiceConfig brServiceConfig;
+    bool found_br_dns = false;
+
+    while (otNetDataGetNextService(instance, &iterator, &brServiceConfig) == OT_ERROR_NONE)
+    {
+        // Look for any service that might contain DNS information
+        if (brServiceConfig.mServiceDataLength > 0)
+        {
+            // Check if service data contains what looks like IPv6 addresses
+            for (uint8_t i = 0; i <= brServiceConfig.mServiceDataLength - 16; i += 16)
+            {
+                // Basic check: see if it could be an IPv6 address
+                bool could_be_ipv6 = false;
+
+                // Check for common IPv6 patterns
+                if (brServiceConfig.mServiceData[i] == 0xfe && brServiceConfig.mServiceData[i + 1] == 0x80) // Link-local
+                    could_be_ipv6 = true;
+                else if (brServiceConfig.mServiceData[i] == 0xfd) // ULA
+                    could_be_ipv6 = true;
+                else if (brServiceConfig.mServiceData[i] == 0x20 && brServiceConfig.mServiceData[i + 1] == 0x01) // Global unicast
+                    could_be_ipv6 = true;
+
+                if (could_be_ipv6)
+                {
+                    char potential_dns_str[INET6_ADDRSTRLEN];
+                    if (zsock_inet_ntop(AF_INET6, &brServiceConfig.mServiceData[i], potential_dns_str, sizeof(potential_dns_str)))
+                    {
+                        LOG_INF("  Potential DNS Server: %s (Enterprise: %u)", potential_dns_str, brServiceConfig.mEnterpriseNumber);
+                        bt_nus_printf("  Potential DNS Server: %s (Enterprise: %u)\n", potential_dns_str, brServiceConfig.mEnterpriseNumber);
+                        found_br_dns = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!found_br_dns)
+    {
+        LOG_INF("No potential DNS servers found in border router services");
+        bt_nus_printf("No potential DNS servers found in border router services\n");
+    }
+
+    // Display DNS resolver status
+    LOG_INF("--- DNS Client Status ---");
+    bt_nus_printf("--- DNS Client Status ---\n");
+
+    // Check if DNS client is operational by checking device role
+    otDeviceRole role = otThreadGetDeviceRole(instance);
+    if (role == OT_DEVICE_ROLE_DISABLED || role == OT_DEVICE_ROLE_DETACHED)
+    {
+        LOG_WRN("DNS client not operational - device not attached to Thread network");
+        bt_nus_printf("DNS client not operational - device not attached to Thread network\n");
+    }
+    else
+    {
+        LOG_INF("DNS client operational - device attached to Thread network");
+        bt_nus_printf("DNS client operational - device attached to Thread network\n");
+    }
+
+    LOG_INF("=== End DNS Configuration ===");
+    bt_nus_printf("=== End DNS Configuration ===\n");
+}
+
+/**
  * Command to display all network information
  */
 void cmd_show_netdata(void)
@@ -957,6 +1357,10 @@ void cmd_show_netdata(void)
     display_openthread_netdata();
     k_sleep(K_MSEC(500));
     display_thread_topology();
+    k_sleep(K_MSEC(500));
+    display_operational_dataset();
+    k_sleep(K_MSEC(500));
+    display_dns_config();
     k_sleep(K_MSEC(500));
     display_raw_netdata();
     k_sleep(K_MSEC(500));

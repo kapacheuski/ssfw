@@ -20,6 +20,16 @@ void display_raw_netdata(void);
 void display_thread_topology(void);
 
 /**
+ * Display Thread operational dataset information
+ */
+void display_operational_dataset(void);
+
+/**
+ * Display current DNS configuration
+ */
+void display_dns_config(void);
+
+/**
  * Command to display all network information
  */
 void cmd_show_netdata(void);

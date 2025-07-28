@@ -60,7 +60,14 @@
 			"sensor.h": "c",
 			"device.h": "c",
 			"nrf_saadc.h": "c",
-			"net_utils.h": "c"
+			"net_utils.h": "c",
+			"compare": "cpp",
+			"functional": "cpp",
+			"ratio": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"variant": "cpp"
 		}
 	}
 }

@@ -238,7 +238,7 @@ static void ble_thread_handler(void *arg1, void *arg2, void *arg3)
 					break;
 				}
 				// Small delay between chunks to avoid overwhelming the BLE stack
-				k_sleep(K_MSEC(10));
+				k_sleep(K_MSEC(20));
 			}
 		}
 	}

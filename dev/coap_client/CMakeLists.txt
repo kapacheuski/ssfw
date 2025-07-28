@@ -17,4 +17,6 @@ target_include_directories(app PUBLIC coap_server/interface
 			   src)
 
 
+
+
 			   # NORDIC SDK APP END
