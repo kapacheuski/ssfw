@@ -6,13 +6,13 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/net/socket.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/net/dns_resolve.h>
 #include <zephyr/net/net_mgmt.h>
 #include <zephyr/net/net_event.h>
 #include <zephyr/net/net_if.h>
+#include <zephyr/net/socket.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -57,85 +57,6 @@ static bool address_resolved = false;
 // DNS resolution result callback
 typedef void (*dns_resolve_callback_t)(int result, struct sockaddr_in6 *addr);
 
-/**
- * Convert IPv4 address to IPv6 using OpenThread NAT64 synthesis
- * @param ipv4_addr Pointer to IPv4 address (4 bytes)
- * @param ipv6_addr Pointer to store the resulting IPv6 address
- * @return true on success, false on failure
- */
-bool convert_ipv4_to_ipv6_nat64(uint8_t *ipv4_addr, struct in6_addr *ipv6_addr)
-{
-    char ipv4_str[INET_ADDRSTRLEN];
-    char ipv6_str[INET6_ADDRSTRLEN];
-    if (!ipv4_addr || !ipv6_addr)
-    {
-        LOG_ERR("Invalid parameters for NAT64 synthesis");
-        bt_nus_printf("Invalid parameters for NAT64 synthesis\n");
-        return false;
-    }
-
-    // Get OpenThread instance
-    struct net_if *iface = net_if_get_default();
-    if (!iface)
-    {
-        LOG_ERR("No network interface available");
-        bt_nus_printf("No network interface available\n");
-        return false;
-    }
-    if (thread_is_connected)
-    {
-        bt_nus_printf("Device is connected\n");
-    }
-    else
-    {
-        bt_nus_printf("Device is not connected\n");
-    }
-
-    struct openthread_context *context = openthread_get_default_context();
-    if (!context || !context->instance)
-    {
-        LOG_ERR("OpenThread context or instance not available");
-        bt_nus_printf("OpenThread context or instance not available\n");
-        return false;
-    }
-    // Check if Thread is attached before attempting NAT64
-    otDeviceRole role = otThreadGetDeviceRole(context->instance);
-    if (role == OT_DEVICE_ROLE_DISABLED || role == OT_DEVICE_ROLE_DETACHED)
-    {
-        LOG_WRN("OpenThread not attached to network (role: %d),", role);
-        bt_nus_printf("OpenThread not attached to network (role: %d),\n", role);
-        return false;
-    }
-
-    // Prepare OpenThread types
-    otIp4Address otIpv4Addr;
-    otIp6Address otIpv6Addr;
-
-    // Copy IPv4 address to OpenThread format
-    memcpy(&otIpv4Addr, ipv4_addr, sizeof(otIp4Address));
-
-    // Use OpenThread NAT64 synthesis
-    otError error = otNat64SynthesizeIp6Address(context->instance, &otIpv4Addr, &otIpv6Addr);
-    if (error != OT_ERROR_NONE)
-    {
-        LOG_WRN("OpenThread NAT64 synthesis failed: %d", error);
-        bt_nus_printf("OpenThread NAT64 synthesis failed: %d\n", error);
-        return false;
-    }
-
-    // Copy result back to standard IPv6 format
-    memcpy(ipv6_addr, &otIpv6Addr, sizeof(struct in6_addr));
-
-    if (zsock_inet_ntop(AF_INET, ipv4_addr, ipv4_str, sizeof(ipv4_str)) &&
-        zsock_inet_ntop(AF_INET6, ipv6_addr, ipv6_str, sizeof(ipv6_str)))
-    {
-        LOG_INF("OpenThread NAT64 success: %s -> %s", ipv4_str, ipv6_str);
-        bt_nus_printf("OpenThread NAT64 success: %s -> %s\n", ipv4_str, ipv6_str);
-    }
-
-    return true;
-}
-
 // DNS result work handler - processes OpenThread DNS results safely in work queue context
 static void dns_result_work_handler(struct k_work *work)
 {
@@ -146,7 +67,7 @@ static void dns_result_work_handler(struct k_work *work)
 
     if (error == OT_ERROR_NONE)
     {
-        char addr_str_ipv4[INET_ADDRSTRLEN];
+        // char addr_str_ipv4[INET_ADDRSTRLEN];
         char addr_str_ipv6[INET6_ADDRSTRLEN];
 
         // Convert OpenThread IPv4 address to string for logging
@@ -161,31 +82,6 @@ static void dns_result_work_handler(struct k_work *work)
         resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
         memcpy(&resolved_addr.sin6_addr, &dns_result.ipv6_address, sizeof(struct in6_addr));
         address_resolved = true; // Mark address as resolved
-
-        // // Convert IPv4 to synthetic IPv6 using OpenThread NAT64
-        // struct in6_addr ipv6_addr;
-
-        // if (convert_ipv4_to_ipv6_nat64((uint8_t *)&dns_result.ipv6_address, &ipv6_addr))
-        // {
-        //     // Set up the IPv6 sockaddr structure
-        //     memset(&resolved_addr, 0, sizeof(resolved_addr));
-        //     resolved_addr.sin6_family = AF_INET6;
-        //     resolved_addr.sin6_port = htons(CONFIG_COAP_SAMPLE_SERVER_PORT);
-        //     memcpy(&resolved_addr.sin6_addr, &ipv6_addr, sizeof(struct in6_addr));
-
-        //     if (zsock_inet_ntop(AF_INET6, &ipv6_addr, addr_str_ipv6, sizeof(addr_str_ipv6)))
-        //     {
-        //         LOG_INF("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s", addr_str_ipv4, addr_str_ipv6);
-        //         bt_nus_printf("OpenThread NAT64 synthesis: IPv4 %s -> IPv6 %s\n", addr_str_ipv4, addr_str_ipv6);
-        //         address_resolved = true; // Mark address as resolved
-        //     }
-        // }
-        // else
-        // {
-        //     LOG_ERR("Failed to convert IPv4 to IPv6 using OpenThread NAT64");
-        //     bt_nus_printf("Failed to convert IPv4 to IPv6 using OpenThread NAT64\n");
-        //     address_resolved = false; // Mark resolution as failed
-        // }
     }
     else
     {
@@ -259,28 +155,7 @@ static void dns_resolve_work_handler(struct k_work *work)
         return;
     }
 
-    //     typedef struct otDnsQueryConfig
-    // {
-    //     otSockAddr          mServerSockAddr;  ///< Server address (IPv6 addr/port). All zero or zero port for unspecified.
-    //     uint32_t            mResponseTimeout; ///< Wait time (in msec) to rx response. Zero indicates unspecified value.
-    //     uint8_t             mMaxTxAttempts;   ///< Maximum tx attempts before reporting failure. Zero for unspecified value.
-    //     otDnsRecursionFlag  mRecursionFlag;   ///< Indicates whether the server can resolve the query recursively or not.
-    //     otDnsNat64Mode      mNat64Mode;       ///< Allow/Disallow NAT64 address translation during address resolution.
-    //     otDnsServiceMode    mServiceMode;     ///< Determines which records to query during service resolution.
-    //     otDnsTransportProto mTransportProto;  ///< Select default transport protocol.
-    // } otDnsQueryConfig;
-
     const otDnsQueryConfig *config = otDnsClientGetDefaultConfig(context->instance);
-    // otDnsQueryConfig config = {
-    //     .mServerSockAddr = {0}, // Use default server address
-    //     .mResponseTimeout = 5000, // 5 seconds timeout
-    //     .mMaxTxAttempts = 3, // 3 attempts
-    //     .mRecursionFlag = OT_DNS_REC_FLAG_UNSET, // Default recursion flag
-    //     .mNat64Mode = OT_DNS_NAT64_UNSPECIFIED, // Use default NAT64 mode
-    //     .mServiceMode = OT_DNS_SERVICE_MODE_UNSPECIFIED, // Use default service mode
-    //     .mTransportProto = OT_DNS_TRANSPORT_UNSPECIFIED // Use default transport protocol
-
-    // }
 
     // Use OpenThread DNS client for IPv4 resolution
     otError error = otDnsClientResolveIp4Address(context->instance,

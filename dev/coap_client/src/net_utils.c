@@ -325,7 +325,7 @@ void display_raw_netdata(void)
     uint8_t length = 255;
 
     otError error = otNetDataGet(instance, false, data, &length);
-    if (error == (uint8_t)OT_ERROR_NONE)
+    if (error == OT_ERROR_NONE)
     {
         LOG_INF("Network Data Length: %d bytes", length);
         bt_nus_printf("Network Data Length: %d bytes\n", length);
@@ -347,9 +347,9 @@ void display_raw_netdata(void)
     }
 
     // Also get stable network data
-    length = (uint8_t)sizeof(data);
+    length = sizeof(data);
     error = otNetDataGet(instance, true, data, &length);
-    if (error == (uint8_t)OT_ERROR_NONE)
+    if (error == OT_ERROR_NONE)
     {
         LOG_INF("Stable Network Data Length: %d bytes", length);
         bt_nus_printf("Stable Network Data Length: %d bytes\n", length);
@@ -396,11 +396,6 @@ void display_thread_topology(void)
 
     LOG_INF("=== Thread Topology ===");
     bt_nus_printf("=== Thread Topology ===\n");
-
-    // Router information
-    // uint8_t maxRouterId = otThreadGetMaxRouterId(instance);
-    // LOG_INF("Max Router ID: %d", maxRouterId);
-    // bt_nus_printf("Max Router ID: %d\n", maxRouterId);
 
     // Leader information
     otLeaderData leaderData;
@@ -615,7 +610,7 @@ void get_netdata_routes(void)
 
             addr_count++;
         }
-        k_sleep(K_MSEC(1000));
+
         // Display multicast addresses
         bt_nus_printf("--- IPv6 Multicast Addresses ---\n");
 
@@ -643,7 +638,7 @@ void get_netdata_routes(void)
     {
         bt_nus_printf("No IPv6 addresses found\n");
     }
-    k_sleep(K_MSEC(1000));
+
     // Display OpenThread specific routing info
     bt_nus_printf("--- OpenThread Network Routes ---\n");
 
@@ -688,104 +683,6 @@ void get_netdata_routes(void)
 
     bt_nus_printf("=== End Network Interface Information ===\n");
 }
-
-/**
- * Initialize and start Thread network
- */
-// void init_thread_network(void)
-// {
-//     struct net_if *iface = net_if_get_default();
-//     if (!iface)
-//     {
-//         bt_nus_printf("No network interface available\n");
-//         return;
-//     }
-
-//     otInstance *instance = net_if_l2_data(iface);
-//     if (!instance)
-//     {
-//         bt_nus_printf("OpenThread instance not available\n");
-//         return;
-//     }
-
-//     bt_nus_printf("=== Initializing Thread Network ===\n");
-
-//     // Check current state
-//     otDeviceRole role = otThreadGetDeviceRole(instance);
-//     bt_nus_printf("Current role: %s\n",
-//                   role == OT_DEVICE_ROLE_DISABLED ? "Disabled" : role == OT_DEVICE_ROLE_DETACHED ? "Detached"
-//                                                              : role == OT_DEVICE_ROLE_CHILD      ? "Child"
-//                                                              : role == OT_DEVICE_ROLE_ROUTER     ? "Router"
-//                                                              : role == OT_DEVICE_ROLE_LEADER     ? "Leader"
-//                                                                                                  : "Unknown");
-
-//     // Enable Thread interface if disabled
-//     if (role == OT_DEVICE_ROLE_DISABLED)
-//     {
-//         bt_nus_printf("Enabling Thread interface...\n");
-//         otError error = otIp6SetEnabled(instance, true);
-//         if (error != OT_ERROR_NONE)
-//         {
-//             bt_nus_printf("Failed to enable IPv6: %d\n", error);
-//             return;
-//         }
-
-//         error = otThreadSetEnabled(instance, true);
-//         if (error != OT_ERROR_NONE)
-//         {
-//             bt_nus_printf("Failed to enable Thread: %d\n", error);
-//             return;
-//         }
-//     }
-
-//     // Set network credentials (replace with your network's credentials)
-//     bt_nus_printf("Setting network credentials...\n");
-
-//     // Set network name
-//     otError error = otThreadSetNetworkName(instance, "OpenThreadDemo");
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to set network name: %d\n", error);
-//     }
-
-//     // Set network key (example key - use your own)
-//     otNetworkKey networkKey;
-//     const uint8_t key[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-//                            0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
-//     memcpy(networkKey.m8, key, sizeof(networkKey.m8));
-
-//     error = otThreadSetNetworkKey(instance, &networkKey);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to set network key: %d\n", error);
-//     }
-
-//     // Set PAN ID
-//     error = otLinkSetPanId(instance, 0x1234);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to set PAN ID: %d\n", error);
-//     }
-
-//     // Set channel
-//     error = otLinkSetChannel(instance, 15);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to set channel: %d\n", error);
-//     }
-
-//     // Start Thread operation
-//     bt_nus_printf("Starting Thread operation...\n");
-//     error = otThreadSetEnabled(instance, true);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to start Thread: %d\n", error);
-//         return;
-//     }
-
-//     bt_nus_printf("Thread network initialization started\n");
-//     bt_nus_printf("Device will attempt to join network...\n");
-// }
 
 /**
  * Display Thread operational dataset information
@@ -1055,96 +952,6 @@ void check_thread_status(void)
 }
 
 /**
- * Create a new Thread network (become leader)
- */
-// void create_thread_network(void)
-// {
-//     struct net_if *iface = net_if_get_default();
-//     if (!iface)
-//     {
-//         bt_nus_printf("No network interface available\n");
-//         return;
-//     }
-
-//     otInstance *instance = net_if_l2_data(iface);
-//     if (!instance)
-//     {
-//         bt_nus_printf("OpenThread instance not available\n");
-//         return;
-//     }
-
-//     bt_nus_printf("=== Creating Thread Network ===\n");
-
-//     // Enable IPv6 first
-//     otError error = otIp6SetEnabled(instance, true);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to enable IPv6: %d\n", error);
-//         return;
-//     }
-
-//     // Enable Thread
-//     error = otThreadSetEnabled(instance, true);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to enable Thread: %d\n", error);
-//         return;
-//     }
-
-//     // Wait a moment for Thread to initialize
-//     k_sleep(K_MSEC(500));
-
-//     // Create new operational dataset
-//     otOperationalDataset dataset;
-//     memset(&dataset, 0, sizeof(dataset));
-
-//     // Set network name
-//     const char *networkName = "MyThreadNet";
-//     strncpy((char *)dataset.mNetworkName.m8, networkName, OT_NETWORK_NAME_MAX_SIZE);
-//     dataset.mComponents.mIsNetworkNamePresent = true;
-
-//     // Set network key
-//     const uint8_t key[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-//                            0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
-//     memcpy(dataset.mNetworkKey.m8, key, sizeof(dataset.mNetworkKey.m8));
-//     dataset.mComponents.mIsNetworkKeyPresent = true;
-
-//     // Set PAN ID
-//     dataset.mPanId = 0x1234;
-//     dataset.mComponents.mIsPanIdPresent = true;
-
-//     // Set channel
-//     dataset.mChannel = 15;
-//     dataset.mComponents.mIsChannelPresent = true;
-
-//     // Set mesh local prefix
-//     const uint8_t mlPrefix[] = {0xfd, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
-//     memcpy(dataset.mMeshLocalPrefix.m8, mlPrefix, sizeof(dataset.mMeshLocalPrefix.m8));
-//     dataset.mComponents.mIsMeshLocalPrefixPresent = true;
-
-//     // Set the dataset
-//     error = otDatasetSetActive(instance, &dataset);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to set active dataset: %d\n", error);
-//         return;
-//     }
-
-//     bt_nus_printf("Dataset configured, starting as Leader...\n");
-
-//     // Start Thread network
-//     error = otThreadSetEnabled(instance, true);
-//     if (error != OT_ERROR_NONE)
-//     {
-//         bt_nus_printf("Failed to start Thread: %d\n", error);
-//         return;
-//     }
-
-//     bt_nus_printf("Thread network creation initiated\n");
-//     bt_nus_printf("Device should become Leader shortly\n");
-// }
-
-/**
  * Display current DNS configuration
  */
 void display_dns_config(void)
@@ -1175,7 +982,7 @@ void display_dns_config(void)
         LOG_INF("Default DNS Configuration:");
         bt_nus_printf("Default DNS Configuration:\n");
 
-                // Display server socket address
+        // Display server socket address
         char server_addr_str[INET6_ADDRSTRLEN];
         if (zsock_inet_ntop(AF_INET6, &defaultConfig->mServerSockAddr.mAddress, server_addr_str, sizeof(server_addr_str)))
         {
@@ -1221,8 +1028,6 @@ void display_dns_config(void)
         LOG_WRN("No default DNS configuration available");
         bt_nus_printf("No default DNS configuration available\n");
     }
-
-    return;
 
     // Try to get DNS servers from network data
     LOG_INF("--- DNS Servers from Network Data ---");
@@ -1278,53 +1083,6 @@ void display_dns_config(void)
         bt_nus_printf("No DNS services found in network data\n");
     }
 
-    // Check for DNS servers in border router configurations
-    LOG_INF("--- DNS from Border Router Services ---");
-    bt_nus_printf("--- DNS from Border Router Services ---\n");
-
-    iterator = OT_NETWORK_DATA_ITERATOR_INIT;
-    otServiceConfig brServiceConfig;
-    bool found_br_dns = false;
-
-    while (otNetDataGetNextService(instance, &iterator, &brServiceConfig) == OT_ERROR_NONE)
-    {
-        // Look for any service that might contain DNS information
-        if (brServiceConfig.mServiceDataLength > 0)
-        {
-            // Check if service data contains what looks like IPv6 addresses
-            for (uint8_t i = 0; i <= brServiceConfig.mServiceDataLength - 16; i += 16)
-            {
-                // Basic check: see if it could be an IPv6 address
-                bool could_be_ipv6 = false;
-
-                // Check for common IPv6 patterns
-                if (brServiceConfig.mServiceData[i] == 0xfe && brServiceConfig.mServiceData[i + 1] == 0x80) // Link-local
-                    could_be_ipv6 = true;
-                else if (brServiceConfig.mServiceData[i] == 0xfd) // ULA
-                    could_be_ipv6 = true;
-                else if (brServiceConfig.mServiceData[i] == 0x20 && brServiceConfig.mServiceData[i + 1] == 0x01) // Global unicast
-                    could_be_ipv6 = true;
-
-                if (could_be_ipv6)
-                {
-                    char potential_dns_str[INET6_ADDRSTRLEN];
-                    if (zsock_inet_ntop(AF_INET6, &brServiceConfig.mServiceData[i], potential_dns_str, sizeof(potential_dns_str)))
-                    {
-                        LOG_INF("  Potential DNS Server: %s (Enterprise: %u)", potential_dns_str, brServiceConfig.mEnterpriseNumber);
-                        bt_nus_printf("  Potential DNS Server: %s (Enterprise: %u)\n", potential_dns_str, brServiceConfig.mEnterpriseNumber);
-                        found_br_dns = true;
-                    }
-                }
-            }
-        }
-    }
-
-    if (!found_br_dns)
-    {
-        LOG_INF("No potential DNS servers found in border router services");
-        bt_nus_printf("No potential DNS servers found in border router services\n");
-    }
-
     // Display DNS resolver status
     LOG_INF("--- DNS Client Status ---");
     bt_nus_printf("--- DNS Client Status ---\n");
@@ -1351,9 +1109,6 @@ void display_dns_config(void)
  */
 void cmd_show_netdata(void)
 {
-
-    //   init_thread_network();
-    //   k_sleep(K_MSEC(1000));
     display_openthread_netdata();
     k_sleep(K_MSEC(500));
     display_thread_topology();

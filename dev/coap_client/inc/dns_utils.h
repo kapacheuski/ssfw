@@ -1,7 +1,6 @@
 #ifndef DNS_UTILS_H
 #define DNS_UTILS_H
 
-#include <zephyr/net/socket.h>
 #include <stdbool.h>
 
 /**
